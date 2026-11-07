@@ -42,6 +42,19 @@ const SPECIAL_COLORS := {
 ## Optional art: put a texture path here (e.g. "res://art/chapel.png") to replace a vector icon.
 const ICON_TEXTURES := {}
 
+## Painted art (names of files in res://art/, cut from "Game Design.pdf"). Delete or rename a file
+## to fall back to the vector look for that element.
+const ROOM_ART := ["room_dungeon", "room_throne", "room_hall", "room_forge"]
+const SPECIAL_ROOM_ART := {"armory": "room_armory", "library": "room_library"}
+const SEAL_ROOM_ART := ["room_seal_red", "room_seal_blue", "room_seal_green"]
+const SEAL_TOKEN_ART := ["seal_a", "seal_b", "seal_c"]
+const CARD_ART := {"explore": "card_explore", "dash": "card_dash", "search": "card_search", "activate": "card_activate", "hide": "card_hide"}
+const HERO_ART := {"ranger": "hero_ranger", "knight": "hero_knight", "mage": "hero_mage", "alchemist": "hero_alchemist", "thief": "card_hide", "priest": "enc_item"}
+const ITEM_ART := {"lantern": "item_lantern", "silence": "item_silence", "potion": "item_potion", "old_shield": "item_shield"}
+const ENCOUNTER_ART := {"run": "enc_run", "hide": "enc_hide", "item": "enc_item", "header": "enc_header"}
+const PLAYER_ART := "mini_player"
+const KNIGHT_ART := "mini_knight"
+
 const ROOM_NAMES := ["Great Hall", "Crypt", "Barracks", "Cellar", "Gallery", "Solar", "Larder",
 	"Guardroom", "Courtyard", "Throne Room", "Dungeon", "Forge", "Pantry", "Kennels", "Well Room",
 	"Trophy Hall", "Scriptorium", "Ossuary", "Wine Vault", "Kitchens", "Mews", "Map Room",

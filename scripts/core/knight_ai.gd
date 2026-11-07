@@ -30,7 +30,8 @@ var skip_turns := 0
 var next_roll := 1          # pre-rolled so the Library can reveal it honestly
 var plan: Array = []        # planned path for intent cues and the debug overlay
 var reason := ""
-var charging := false       # hunting because of loud Noise (moves hunt_steps) vs. stalking by sight
+var charging := false
+var stunned_now := false    # lost this turn to the Lantern: no move, no encounter       # hunting because of loud Noise (moves hunt_steps) vs. stalking by sight
 var turn_no := 0
 var logging := true
 var log_lines: Array = []
@@ -144,6 +145,7 @@ func begin_turn(s: Dictionary) -> Array:
 	update_state(s)
 	var roll := next_roll
 	next_roll = rng.randi_range(1, 6)
+	stunned_now = skip_turns > 0
 	if skip_turns > 0:
 		skip_turns -= 1
 		log_event("Dazzled by the Lantern: loses its turn in %s" % room_name(room))

@@ -5,6 +5,7 @@ signal room_clicked(room: int)
 
 const P = preload("res://scripts/ui/palette.gd")
 const Config = preload("res://scripts/core/config.gd")
+const Art = preload("res://scripts/ui/art.gd")
 
 var game                       # scripts/core/game.gd instance
 var room_names: Array = []
@@ -18,7 +19,8 @@ var flash := Color(0, 0, 0, 0)
 var _pos := {}                 # piece -> current pixel centre
 var _goal := {}                # piece -> room it is gliding to
 var _time := 0.0
-var _pulse_rooms := {}         # room -> remaining pulse time (keep-shift / bell highlight)
+var _pulse_rooms := {}
+var _off := Vector2.ZERO        # screen-shake offset for this frame         # room -> remaining pulse time (keep-shift / bell highlight)
 
 
 func _ready() -> void:
@@ -121,6 +123,7 @@ func _draw() -> void:
 	if game == null:
 		return
 	var off := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake * 10.0
+	_off = off
 	draw_set_transform(off)
 	var castle = game.castle
 	var font := ThemeDB.fallback_font
@@ -147,6 +150,15 @@ func _draw() -> void:
 		elif game.searched.has(r):
 			fill = P.ROOM_SEARCHED
 		draw_rect(rect, fill)
+		var tile := _room_tile(r)
+		if tile != null:
+			var shade := Color(0.72, 0.70, 0.74)
+			if corrupted:
+				shade = Color(0.22, 0.14, 0.28)
+			elif game.searched.has(r):
+				shade = Color(0.42, 0.40, 0.45)
+			draw_texture_rect_region(tile, rect, _cover_src(tile, rect.size), shade)
+			draw_rect(Rect2(rect.position, Vector2(rect.size.x, 26)), Color(0, 0, 0, 0.6))
 		# Knight's line of sight.
 		if sight > 0 and kdist[r] >= 0 and kdist[r] <= sight:
 			draw_rect(rect, P.SIGHT)
@@ -172,7 +184,9 @@ func _draw() -> void:
 		if si >= 0:
 			_draw_seal(rect.get_center() + Vector2(0, c * 0.05), c * 0.22, si, game.restored[si])
 		elif sp != "":
-			_draw_special(rect.get_center() + Vector2(0, c * 0.08), c * 0.16, sp, corrupted)
+			if tile != null:
+				draw_circle(rect.get_center() + Vector2(0, c * 0.08), c * 0.2, Color(0, 0, 0, 0.55))
+			_draw_special(rect.get_center() + Vector2(0, c * 0.08), c * 0.13 if tile != null else c * 0.16, sp, corrupted)
 		if game.searched.has(r) and si < 0:
 			draw_string(font, rect.position + Vector2(8, rect.size.y - 8), "searched", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(P.TEXT_DIM, 0.5))
 		if corrupted:
@@ -217,13 +231,26 @@ func _draw() -> void:
 		draw_circle(sp2, c * 0.07, Color(P.SPIRIT, 0.55))
 		draw_circle(sp2 + Vector2(-4, -2), 2.5, P.BG)
 		draw_circle(sp2 + Vector2(4, -2), 2.5, P.BG)
+	var player_tex := Art.tex(P.PLAYER_ART)
+	var knight_tex := Art.tex(P.KNIGHT_ART)
 	if _pos.has("player"):
 		var pp: Vector2 = _pos["player"]
-		draw_circle(pp, c * 0.13, Color(P.GOLD, 0.25))
-		draw_circle(pp, c * 0.1, P.GOLD)
-		var initial: String = Config.HEROES[game.hero]["name"].substr(0, 1)
-		draw_string(font, pp + Vector2(-10, 7), initial, HORIZONTAL_ALIGNMENT_CENTER, 20, 20, P.BG)
-	if _pos.has("knight"):
+		if player_tex != null:
+			_draw_mini(player_tex, pp, c * 0.5, P.GOLD)
+		else:
+			draw_circle(pp, c * 0.13, Color(P.GOLD, 0.25))
+			draw_circle(pp, c * 0.1, P.GOLD)
+			var initial: String = Config.HEROES[game.hero]["name"].substr(0, 1)
+			draw_string(font, pp + Vector2(-10, 7), initial, HORIZONTAL_ALIGNMENT_CENTER, 20, 20, P.BG)
+	if _pos.has("knight") and knight_tex != null:
+		var kp2: Vector2 = _pos["knight"]
+		if kstate == "HUNT":
+			draw_circle(kp2, c * 0.24 * (1.0 + 0.1 * sin(_time * 10.0)), Color(kcol, 0.22))
+		_draw_mini(knight_tex, kp2, c * 0.56, kcol)
+		draw_string(font, kp2 + Vector2(-20, -c * 0.34), P.STATE_ICON[kstate], HORIZONTAL_ALIGNMENT_CENTER, 40, 24, kcol)
+		if game.knight.skip_turns > 0:
+			draw_string(font, kp2 + Vector2(-30, c * 0.3), "dazzled", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, P.GOLD)
+	elif _pos.has("knight"):
 		var kp: Vector2 = _pos["knight"]
 		var s := c * 0.14
 		if kstate == "HUNT":
@@ -242,9 +269,48 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), flash)
 
 
+## A painted room tile per room: Seals and some specials have their own, the rest vary by seed.
+func _room_tile(r: int) -> Texture2D:
+	var si: int = game.castle.seal_index(r)
+	if si >= 0:
+		return Art.tex(P.SEAL_ROOM_ART[si])
+	var sp: String = game.castle.specials.get(r, "")
+	if P.SPECIAL_ROOM_ART.has(sp):
+		return Art.tex(P.SPECIAL_ROOM_ART[sp])
+	return Art.tex(P.ROOM_ART[posmod(r * 7 + int(game.rng.seed % 1000), P.ROOM_ART.size())])
+
+
+## Source rect that fills `target` without stretching (like CSS background-size: cover).
+func _cover_src(tex: Texture2D, target: Vector2) -> Rect2:
+	var ts := tex.get_size()
+	var scale := maxf(target.x / ts.x, target.y / ts.y)
+	var src_size := target / scale
+	return Rect2((ts - src_size) * 0.5, src_size)
+
+
+## Miniature standing on its base, with a coloured ring for state.
+func _draw_mini(tex: Texture2D, foot: Vector2, height: float, ring: Color) -> void:
+	var ts := tex.get_size()
+	var h := height
+	var w := ts.x / ts.y * h
+	var base := foot + Vector2(0, h * 0.28)
+	draw_set_transform(_off + base, 0.0, Vector2(1.0, 0.35))
+	draw_circle(Vector2.ZERO, w * 0.48, Color(0, 0, 0, 0.55))
+	draw_arc(Vector2.ZERO, w * 0.5, 0, TAU, 32, ring, 4.0)
+	draw_set_transform(_off)
+	draw_texture_rect(tex, Rect2(base - Vector2(w * 0.5, h * 0.95), Vector2(w, h)), false)
+
+
 func _draw_seal(center: Vector2, rad: float, idx: int, restored: bool) -> void:
 	var col: Color = P.SEAL_COLORS[idx]
 	var spin := _time * (1.0 if restored else 0.2)
+	var token := Art.tex(P.SEAL_TOKEN_ART[idx])
+	if token != null:
+		if restored:
+			draw_circle(center, rad * (1.3 + 0.08 * sin(_time * 3.0)), Color(col, 0.35))
+		draw_texture_rect(token, Rect2(center - Vector2(rad, rad) * 1.1, Vector2(rad, rad) * 2.2), false, Color.WHITE if restored else Color(0.55, 0.55, 0.6))
+		draw_arc(center, rad * 1.15, spin, spin + TAU * (0.75 if restored else 0.25), 32, Color(col, 0.9 if restored else 0.5), 3.0)
+		return
 	if restored:
 		draw_circle(center, rad * (1.25 + 0.08 * sin(_time * 3.0)), Color(col, 0.25))
 		draw_circle(center, rad, Color(col, 0.8))

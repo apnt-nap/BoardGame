@@ -7,6 +7,7 @@ const P = preload("res://scripts/ui/palette.gd")
 const Board = preload("res://scripts/ui/board_view.gd")
 const Sfx = preload("res://scripts/ui/sfx.gd")
 const Profile = preload("res://scripts/ui/profile.gd")
+const Art = preload("res://scripts/ui/art.gd")
 
 const LOG_PATH := "user://knight_log.txt"
 
@@ -103,6 +104,24 @@ func _button(text: String, cb: Callable, min_w: int = 0) -> Button:
 	return b
 
 
+func _art_rect(name: String, min_size: Vector2, dim: float = 1.0) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = Art.tex(name)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	t.custom_minimum_size = min_size
+	t.clip_contents = true
+	t.modulate = Color(dim, dim, dim)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+func _set_icon(b: Button, name: String, max_w: int) -> void:
+	b.icon = Art.tex(name)
+	b.expand_icon = b.icon != null
+	b.add_theme_constant_override("icon_max_width", max_w)
+
+
 func _vbox(sep: int = 8) -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", sep)
@@ -144,6 +163,9 @@ func _build_menu() -> void:
 	menu_root = Control.new()
 	menu_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(menu_root)
+	var backdrop := _art_rect("map", Vector2.ZERO, 0.28)
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(backdrop)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	menu_root.add_child(center)
@@ -169,8 +191,9 @@ func _build_menu() -> void:
 		b.toggle_mode = true
 		b.button_group = group
 		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(355, 92)
+		b.custom_minimum_size = Vector2(355, 104)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		_set_icon(b, P.HERO_ART.get(h, ""), 120)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		b.pressed.connect(func():
 			sfx.play("click")
@@ -235,6 +258,7 @@ func _refresh_menu() -> void:
 		var info: Dictionary = Config.HEROES[h]
 		var unlocked: bool = profile.hero_unlocked(h)
 		b.disabled = not unlocked
+		b.modulate = Color.WHITE if unlocked else Color(0.6, 0.6, 0.65)
 		b.text = ("%s  -  %s\n%s" % [info["name"], info["item_name"], info["text"]]) if unlocked else ("%s  (locked)\nUnlock: %s" % [info["name"], info["unlock"]])
 		b.button_pressed = sel_hero == h
 	for d in Config.DIFFICULTY_ORDER:
@@ -268,7 +292,7 @@ func _build_game() -> void:
 	game_root.add_child(m)
 
 	board = Board.new()
-	board.custom_minimum_size = Vector2(820, 820)
+	board.custom_minimum_size = Vector2(740, 740)
 	board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	board.room_clicked.connect(_on_room_clicked)
@@ -279,14 +303,18 @@ func _build_game() -> void:
 	row.add_child(side)
 
 	# Status bar.
-	var status := _hbox(18)
+	var status := _hbox(8)
 	side.add_child(_panel(status))
+	status.add_child(_art_rect("tok_turn", Vector2(30, 30)))
 	ui["turn"] = _label("", 20, P.TEXT)
 	status.add_child(ui["turn"])
+	status.add_child(_art_rect("tok_health", Vector2(30, 30)))
 	ui["health"] = _pips(Config.MAX_HEALTH, P.BLOOD)
 	status.add_child(_titled("Health", ui["health"]))
+	status.add_child(_art_rect("tok_noise", Vector2(30, 30)))
 	ui["noise"] = _pips(Config.MAX_NOISE, P.EMBER)
 	status.add_child(_titled("Noise", ui["noise"]))
+	status.add_child(_art_rect("tok_shards", Vector2(30, 30)))
 	ui["shards"] = _label("", 20, P.SPIRIT)
 	status.add_child(_titled("Shards", ui["shards"]))
 	ui["focus"] = _label("", 20, P.GOLD)
@@ -345,9 +373,11 @@ func _build_game() -> void:
 		var cv := _vbox(6)
 		var card := _panel(cv, P.PANEL_LIGHT, P.GOLD.darkened(0.4))
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.custom_minimum_size.y = 200
+		card.custom_minimum_size.y = 250
 		hand.add_child(card)
-		var title := _label("", 24, P.GOLD)
+		var art := _art_rect("", Vector2(0, 84))
+		cv.add_child(art)
+		var title := _label("", 22, P.GOLD)
 		cv.add_child(title)
 		var text := _label("", 14, P.TEXT_DIM, true)
 		text.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -362,7 +392,7 @@ func _build_game() -> void:
 		var squiet := _button("Sneak: still", func(): _on_card(idx, "sneak_quiet"))
 		squiet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		sneak_row.add_child(squiet)
-		ui["cards"].append({"panel": card, "title": title, "text": text, "play": play, "move": smove, "quiet": squiet})
+		ui["cards"].append({"panel": card, "art": art, "title": title, "text": text, "play": play, "move": smove, "quiet": squiet})
 
 	var frow := _hbox(10)
 	side.add_child(frow)
@@ -391,6 +421,7 @@ func _build_game() -> void:
 	ev.custom_minimum_size.x = 560
 	var ep := _panel(_margin(ev, 10), Color("1d0f14"), P.BLOOD)
 	enc_center.add_child(ep)
+	ev.add_child(_art_rect(P.ENCOUNTER_ART["header"], Vector2(0, 150)))
 	ev.add_child(_label("THE CURSED KNIGHT FOUND YOU!", 30, P.BLOOD))
 	ui["enc_text"] = _label("", 16, P.TEXT_DIM, true)
 	ev.add_child(ui["enc_text"])
@@ -814,6 +845,7 @@ func _refresh() -> void:
 	var hero_ready: bool = game.hero_item_ready or (hi["item"] == "rune_key" and game.rune_key_ready)
 	ui["hero_btn"].text = "%s%s" % [hi["item_name"], "" if hero_ready else " (used)"]
 	ui["hero_btn"].tooltip_text = hi["text"]
+	_set_icon(ui["hero_btn"], P.ITEM_ART.get(hi["item"], P.HERO_ART.get(game.hero, "")), 36)
 	ui["hero_btn"].disabled = busy or not game.can_use_hero_item()
 	for i in Config.MAX_TREASURES:
 		var tb: Button = ui["treasure_btns"][i]
@@ -821,9 +853,11 @@ func _refresh() -> void:
 			var t: String = game.treasures[i]
 			tb.text = Config.TREASURE_INFO[t]["name"]
 			tb.tooltip_text = Config.TREASURE_INFO[t]["text"]
+			_set_icon(tb, P.ITEM_ART.get(t, ""), 36)
 			tb.disabled = busy or not game.can_use_treasure(t)
 		else:
 			tb.text = "(empty pack slot)"
+			tb.icon = null
 			tb.tooltip_text = ""
 			tb.disabled = true
 
@@ -832,6 +866,7 @@ func _refresh() -> void:
 		if i < game.hand.size():
 			var c: String = game.hand[i]
 			cui["title"].text = Config.CARDS[c]["name"]
+			cui["art"].texture = Art.tex(P.CARD_ART.get(c, ""))
 			cui["text"].text = Config.CARDS[c]["text"]
 			cui["play"].disabled = not act or not game.can_play(i, "normal")
 			cui["move"].disabled = not act
@@ -841,6 +876,7 @@ func _refresh() -> void:
 		else:
 			cui["title"].text = ""
 			cui["text"].text = ""
+			cui["art"].texture = null
 			for key in ["play", "move", "quiet"]:
 				cui[key].disabled = true
 	ui["focus_btn"].disabled = not act or not game.can_focus()
@@ -863,7 +899,10 @@ func _refresh() -> void:
 		for o in game.encounter_options():
 			var id: String = o["id"]
 			var b := _button("%s   -   %s" % [o["label"], o["text"]], func(): _on_encounter(id))
-			b.custom_minimum_size.y = 48
+			b.custom_minimum_size.y = 64
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			_set_icon(b, P.ENCOUNTER_ART.get(id, P.ITEM_ART.get(id, P.ENCOUNTER_ART["item"])), 90)
 			ui["enc_opts"].add_child(b)
 		var extras := _hbox(8)
 		if game.can_use_hero_item():
