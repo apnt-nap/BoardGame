@@ -150,8 +150,23 @@ scripts/ui/               visuals only
   profile.gd              unlock progress
 scripts/sim/simulate.gd   headless balance simulation
 scripts/tests/ui_smoke.gd UI smoke test
+scripts/tools/import_art.gd cuts the painted art out of Game Design.pdf
+art/                      painted art used by the game
 docs/                     balance results
 ```
+
+**Art.** The painted art comes from `Game Design.pdf`: room tiles, Seal tokens, the player and Knight miniatures,
+hero portraits, card, item and encounter illustrations, and HUD tokens. It is cut into `art/` by a script, so it can be redone
+after the PDF changes:
+
+```
+mutool extract "Game Design.pdf"            (run inside build/art_src/)
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts/tools/import_art.gd
+```
+
+Crop rectangles are listed at the top of `scripts/tools/import_art.gd`. Which picture goes where (room tiles per room type,
+card art, hero portraits) is set in `scripts/ui/palette.gd`. Any element whose file is missing falls back to the flat vector style.
+Thief and Priest have no portraits in the PDF yet; they borrow the Hide card and Use Item art.
 
 **Reskinning.** Every colour is in `scripts/ui/palette.gd`. To use painted icons, map a room type to a texture
 in `ICON_TEXTURES` (for example `"chapel": "res://art/chapel.png"`). For real sounds, drop

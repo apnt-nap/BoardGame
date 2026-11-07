@@ -21,7 +21,7 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts
 
 | Hero | Easy | Normal | Hard |
 |---|---|---|---|
-| Ranger | 70.4% | 50.3% | 34.1% |
+| Ranger | 70.3% | 50.3% | 34.2% |
 | Alchemist | 69.8% | 54.4% | 32.6% |
 | Mage | 70.3% | 55.1% | 34.8% |
 | Knight | 73.3% | 55.7% | 37.4% |
