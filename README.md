@@ -34,6 +34,10 @@ Command-line equivalent, after the templates are installed:
 Godot_v4.7.2-stable_win64_console.exe --headless --path . --export-release "Windows Desktop" build/BlackthornKeep.exe
 ```
 
+**Sharing with friends.** Zip `build/BlackthornKeep.exe` (about 44 MB zipped) and share it with a Google Drive or OneDrive link,
+or attach it to a GitHub Release. It is too big for email or Discord. Your friend unzips it and double-clicks the exe; nothing needs installing.
+The exe isn't code-signed, so Windows SmartScreen may show "Windows protected your PC". Click **More info → Run anyway**.
+
 ---
 
 ## How to play
