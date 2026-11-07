@@ -525,7 +525,7 @@ func _world_phase() -> void:
 	# A stunned Knight causes no encounter this turn (rulebook: "Stunned").
 	var found: bool = knight.room == player_room and not knight.stunned_now
 	knight.end_turn(found)
-	_ev("knight", knight.log_lines.back() if knight.logging and not knight.log_lines.is_empty() else "", {"from": from_k, "path": walked, "state": knight.state})
+	_ev("knight", knight.log_lines.back() if knight.logging and not knight.log_lines.is_empty() else "", {"from": from_k, "path": walked, "state": knight.state, "roll": knight.last_roll, "need": diff["move_min"]})
 	if found:
 		_start_encounter()
 		return

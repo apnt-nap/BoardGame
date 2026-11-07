@@ -8,6 +8,7 @@ const Board = preload("res://scripts/ui/board_view.gd")
 const Sfx = preload("res://scripts/ui/sfx.gd")
 const Profile = preload("res://scripts/ui/profile.gd")
 const Art = preload("res://scripts/ui/art.gd")
+const DiceView = preload("res://scripts/ui/dice_view.gd")
 
 const LOG_PATH := "user://knight_log.txt"
 
@@ -563,6 +564,8 @@ func _handle(e: Dictionary) -> void:
 			if e["text"] != "":
 				knight_log.append(e["text"])
 				_log("Knight: " + e["text"].substr(e["text"].find("]") + 2), P.STATE_COLORS.get(e["state"], P.TEXT_DIM))
+			if e.get("roll", 0) > 0:
+				await _knight_die(e["roll"], e["roll"] >= e["need"])
 			for r in e["path"]:
 				board.place("knight", r)
 				sfx.play("knight_step")
@@ -570,10 +573,8 @@ func _handle(e: Dictionary) -> void:
 			if e["path"].is_empty():
 				await _wait(0.15)
 		"dice":
-			sfx.play("dice")
-			_dice_popup(e["roll"], e["ok"])
 			_log(e["text"], P.HEAL if e["ok"] else P.EMBER)
-			await _wait(0.75)
+			await _roll_dice(e["roll"], e["ok"], e["text"])
 		"noise":
 			sfx.play("noise")
 			board.pulse(e["room"], 0.8)
@@ -682,20 +683,57 @@ func _float_text(room: int, text: String, color: Color) -> void:
 	tw.chain().tween_callback(l.queue_free)
 
 
-func _dice_popup(roll: int, ok: bool) -> void:
-	var l := _label(str(roll), 96, P.HEAL if ok else P.BLOOD)
+## Big die in the middle of the board for the player's rolls, with the outcome under it.
+func _roll_dice(roll: int, ok: bool, text: String) -> void:
+	var d := DiceView.new()
+	d.size = Vector2(120, 120)
+	d.sfx = sfx
+	overlay.add_child(d)
+	d.position = board.global_position + board.size * 0.5 - d.size * 0.5
+	d.pivot_offset = d.size * 0.5
+	await d.roll_to(roll, P.HEAL if ok else P.BLOOD, 0.75)
+	var l := _label(text.get_slice(":", 1).strip_edges() if text.contains(":") else text, 22, P.HEAL if ok else P.BLOOD, true)
 	l.add_theme_color_override("font_outline_color", P.BG)
-	l.add_theme_constant_override("outline_size", 12)
+	l.add_theme_constant_override("outline_size", 8)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.custom_minimum_size = Vector2(520, 0)
 	overlay.add_child(l)
-	l.position = board.global_position + board.size * 0.5 - Vector2(30, 70)
-	l.pivot_offset = Vector2(30, 60)
-	l.scale = Vector2(0.3, 0.3)
-	var tw := l.create_tween()
-	tw.tween_property(l, "scale", Vector2(1.15, 1.15), 0.18).set_trans(Tween.TRANS_BACK)
-	tw.tween_property(l, "scale", Vector2.ONE, 0.1)
-	tw.tween_interval(0.35)
-	tw.tween_property(l, "modulate:a", 0.0, 0.3)
-	tw.tween_callback(l.queue_free)
+	l.position = d.position + Vector2(d.size.x * 0.5 - 260, d.size.y + 22)
+	await _wait(0.9)
+	for n in [d, l]:
+		var tw: Tween = n.create_tween()
+		tw.tween_property(n, "modulate:a", 0.0, 0.25)
+		tw.tween_callback(n.queue_free)
+	await _wait(0.15)
+
+
+## Small red die beside the Knight: its move-or-stay roll.
+func _knight_die(roll: int, moves: bool) -> void:
+	if not board._pos.has("knight"):
+		return
+	var d := DiceView.new()
+	d.size = Vector2(54, 54)
+	d.body = Color("7a1d24")
+	d.pip = Color("f5e6d0")
+	d.edge = Color("3a0d12")
+	d.sfx = sfx
+	overlay.add_child(d)
+	var kp: Vector2 = board._pos["knight"]
+	var side := 28.0 if kp.x < board.size.x * 0.6 else -28.0 - d.size.x
+	d.position = board.global_position + kp + Vector2(side, -70)
+	d.pivot_offset = d.size * 0.5
+	await d.roll_to(roll, P.BLOOD if moves else P.TEXT_DIM, 0.4)
+	var l := _label("moves" if moves else "stays", 16, P.BLOOD if moves else P.TEXT_DIM)
+	l.add_theme_color_override("font_outline_color", P.BG)
+	l.add_theme_constant_override("outline_size", 6)
+	overlay.add_child(l)
+	l.position = d.position + Vector2(0, d.size.y + 2)
+	await _wait(0.35)
+	for n in [d, l]:
+		var tw: Tween = n.create_tween()
+		tw.tween_interval(0.3)
+		tw.tween_property(n, "modulate:a", 0.0, 0.3)
+		tw.tween_callback(n.queue_free)
 
 
 func _write_log() -> void:

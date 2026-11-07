@@ -28,6 +28,7 @@ var search_pick := -1
 var search_checked: Dictionary = {}
 var skip_turns := 0
 var next_roll := 1          # pre-rolled so the Library can reveal it honestly
+var last_roll := 0          # the die it used this turn (0 = it did not roll)
 var plan: Array = []        # planned path for intent cues and the debug overlay
 var reason := ""
 var charging := false
@@ -144,6 +145,7 @@ func begin_turn(s: Dictionary) -> Array:
 	turn_no += 1
 	update_state(s)
 	var roll := next_roll
+	last_roll = 0
 	next_roll = rng.randi_range(1, 6)
 	stunned_now = skip_turns > 0
 	if skip_turns > 0:
@@ -151,6 +153,7 @@ func begin_turn(s: Dictionary) -> Array:
 		log_event("Dazzled by the Lantern: loses its turn in %s" % room_name(room))
 		return []
 	var need: int = diff["move_min"]
+	last_roll = roll
 	if roll < need:
 		log_event("Rolled %d (needs %d+): stays in %s. %s" % [roll, need, room_name(room), reason])
 		return []
