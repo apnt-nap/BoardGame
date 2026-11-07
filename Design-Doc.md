@@ -1,6 +1,6 @@
 # Curse of Blackthorn Keep: Digital Redesign
 
-Nov 7, 2026 · @Asia
+Nov 7, 2026 · @Asia · updated after bot tuning for build v1.0 (see "Tuning changes" at the end)
 
 ## Goal
 
@@ -33,13 +33,13 @@ Each run places 5 special rooms at random:
 
 **Corrupted rooms.** When the second Seal is restored, the curse corrupts 2 special rooms chosen at random. A corrupted room turns dark on the map and its ability no longer works for the rest of the run. Players who saved the Chapel or the Bell Tower for later may lose them, so using rooms early becomes a real choice.
 
-The turn limit rises from 24 to about 30 to fit the bigger map. The bot simulation in step 4 sets the exact number.
+The turn limit rises from 24 to **36** to fit the bigger map. The bot simulation set the exact number (see Tuning changes).
 
 ## Your turn, cards and items
 
-The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight acts. Three fixes stop a bad roll or a bad hand from wasting a turn.
+The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight acts. The 16-card deck is now 2 Explore, 2 Dash, 6 Search, 4 Activate and 2 Hide. Sneak already moves you 1 room silently, so three Explore copies became Search and Activate. Three fixes stop a bad roll or a bad hand from wasting a turn.
 
-1. **Any card can be played as a Sneak.** Instead of its printed action, play any card face down to move 1 room with no Noise, or to lower Noise by 1. A hand of two unusable Activates is never a dead turn again.
+1. **Any card can be played as a Sneak.** Instead of its printed action, play any card face down to move 1 room with no Noise, or to keep still and lower Noise by 1 (this also works at Noise 0, as a silent wait). A hand of two unusable Activates is never a dead turn again.
 2. **Misses build up.** A failed Search gives +1 to your next Search roll, and a failed Activate gives +1 to your next Activate on that Seal. A run of bad rolls gets easier, not worse.
 3. **One Focus per Seal.** You start with 1 Focus and gain 1 each time you restore a Seal. Spend it to discard your hand and draw 2 new cards.
 
@@ -48,7 +48,7 @@ The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight
 | Treasure | Effect |
 | --- | --- |
 | Smoke Vial | In an encounter, escape to an adjacent room with no damage and no Noise |
-| Spirit Bell | Send the Wandering Spirit 2 rooms in the direction you choose |
+| Spirit Bell | Push the Wandering Spirit up to 2 rooms away from you |
 
 The four existing treasures (Ward Charm, Old Shield, Emergency Ration, Secret Passage Map) stay as they are.
 
@@ -60,8 +60,8 @@ The Knight is a state machine with four states and a short memory of where it la
 | --- | --- | --- |
 | Patrol | Quiet: no recent noise in memory | Walks a guard loop that passes all three Seals, rebuilt each run for the random map |
 | Investigate | It hears a noise (Noise 0–2, token on the map) | Takes the shortest route to the last noise it heard |
-| Hunt | Noise 3 or more | Knows your room and takes the shortest route to you |
-| Search | It reaches a noise and you are not there, or it loses you during a hunt | Checks the rooms next to that spot for 2 turns, then goes back to Patrol |
+| Hunt | Noise at the hunt threshold (it hears you), or you are within its sight range (it sees you) | Knows your room and takes the shortest route to you. Charging at loud Noise uses the "steps when hunting" value; stalking by sight is 1 room |
+| Search | It reaches a noise and you are not there, it loses you during a hunt, or you out-hide it in an encounter | Checks the rooms next to that spot for 1–3 turns (by difficulty), then goes back to Patrol |
 
 Search is the new state. In the paper rules the Knight gave up the moment it reached an empty noise room. Now it looks around like a real guard would, which makes it more believable and gives you a reason to leave the area quickly.
 
@@ -75,11 +75,13 @@ Difficulty changes only the Knight's senses and reactions, never the rules you p
 
 | Setting | Easy | Normal | Hard |
 | --- | --- | --- | --- |
-| Knight moves on a D6 roll of | 4–6 | 3–6 | 2–6 |
+| Knight moves on a D6 roll of | 4–6 | 2–6 | 2–6 |
 | Remembers a noise for | 1 turn | 2 turns | 3 turns |
 | Starts hunting at Noise | 4 | 3 | 3 |
 | Steps per move when hunting | 1 | 1 | 2 |
-| Search state lasts | 1 turn | 2 turns | 3 turns, and checks hiding spots |
+| Search state lasts | 1 turn | 2 turns | 3 turns |
+| Sees you through doorways (sight) | 0 (same room only) | 1 | 2 |
+| Encounter HIDE is safe on | 4–6 | 4–6 | 5–6 (it checks hiding spots) |
 | Target player win rate | 65–75% | 45–55% | 25–35% |
 
 The win-rate targets are starting points. Step 4's bot simulation checks them and we tune the numbers until each level lands in its range.
@@ -120,3 +122,20 @@ The game is built in Godot 4 with GDScript, which reads like Python, and exporte
 3. **8–9 Nov:** package the .exe, run the playtests and the survey, and write up the AI results for the report.
 
 Open question: the deadline is assumed to be 9 November 2026. If it is a different date, the timeline moves.
+
+## Tuning changes (build v1.0)
+
+The bot simulation (1,000 games per hero per difficulty; the full method and results are in `docs/BALANCE.md`) showed that the first numbers made the game a pure race against the clock. Win rates were only 10–25% on every level, and Easy, Normal and Hard played almost the same, because the Knight was rarely the reason anyone lost. The changes below fix that while keeping the design's rules:
+
+| Change | Why |
+| --- | --- |
+| Turn limit 30 → **36** | A 5×5 castle, 6 Shards and 3 Activations need about 30 turns of good play. With 30, most losses were time-outs |
+| Deck: Explore 5 → 2, Search 4 → 6, Activate 3 → 4 | Sneak already gives a free silent move, so extra Explores only caused waiting turns |
+| New Knight sense: **sight** (0 / 1 / 2 doorways) | The main lever that separates the difficulties. It also makes the guard more believable: it notices you in the next room on its own, without waiting for noise |
+| Normal moves on 2–6 (was 3–6) | Puts Normal in its 45–55% band once the race was fixed |
+| Hunt-by-sight moves 1 room; only a Noise charge uses Hard's 2 steps | With sight 2 *and* 2 steps, Hard dropped to about 8% |
+| Encounters happen only after the Knight's move, and a successful HIDE leaves the Knight in your room (paper rules) | Keeps the paper version's tension: after hiding you must slip away on your own turn |
+| Potion, Ward Charm and Ration work inside an encounter, before RUN or HIDE (paper rules) | As in the paper rulebook |
+
+The bot hides in encounters. As in the paper playtests, hiding wins more often than running.
+
