@@ -26,6 +26,8 @@ func _run() -> void:
 	_test_rune_key()
 	_test_third_seal_wins()
 	_test_redraw()
+	_test_normal_knight()
+	_test_easy_hard_unchanged()
 	_test_bot_games()
 	print("%d checks, %d failed" % [checks, failures])
 	print("Rules tests passed" if failures == 0 else "Rules tests FAILED")
@@ -56,6 +58,16 @@ func _calm(g) -> void:
 	g.knight.room = dist.find(dist.max())
 
 
+## Order-independent dictionary comparison.
+func _same(a: Dictionary, b: Dictionary) -> bool:
+	if a.size() != b.size():
+		return false
+	for key in b:
+		if not a.has(key) or a[key] != b[key]:
+			return false
+	return true
+
+
 func _set_hand(g, cards: Array) -> void:
 	g.discard.append_array(g.hand)
 	g.hand = cards.duplicate()
@@ -73,7 +85,7 @@ func _test_generation() -> void:
 		for r in c.specials:
 			types[c.specials[r]] = types.get(c.specials[r], 0) + 1
 			check(not (r in c.seals), "seed %d: special room on a Seal" % s)
-		check(types == {"passage": 2, "chapel": 1, "bell_tower": 1, "armory": 1}, "seed %d: special rooms are %s" % [s, str(types)])
+		check(_same(types, {"passage": 2, "chapel": 1, "bell_tower": 1, "armory": 1}), "seed %d: special rooms are %s" % [s, str(types)])
 		check(c.passage.size() == 2 and c.passage_exit(c.passage[0]) == c.passage[1], "seed %d: passage endpoints" % s)
 		check(c.is_fully_connected(), "seed %d: castle not connected" % s)
 		check(c.seals.size() == 3, "seed %d: 3 seals" % s)
@@ -92,7 +104,7 @@ func _test_removed_content() -> void:
 	var total := 0
 	for t in Config.DECK:
 		total += Config.DECK[t]
-	check(total == 16 and Config.DECK == {"explore": 2, "dash": 2, "search": 6, "activate": 4, "hide": 2}, "deck composition unchanged")
+	check(total == 16 and _same(Config.DECK, {"explore": 2, "dash": 2, "search": 6, "activate": 4, "hide": 2}), "deck composition unchanged")
 	var g = _game()
 	check(not ("focus" in g), "Focus resource removed")
 
@@ -356,6 +368,154 @@ func _test_redraw() -> void:
 	g3.discard.append_array(g3.deck)
 	g3.deck.clear()
 	check(g3.redraw_hand() and g3.hand.size() == 2, "redraw reshuffles the discard when the deck is empty")
+
+
+# ---------------------------------------------------------------- knight movement
+
+## Two rooms at exactly door-distance d (a, b). Returns [] if none.
+func _pair_at(c, d: int) -> Array:
+	for a in c.room_count():
+		var dist: Array = c.distances(a)
+		for b in c.room_count():
+			if dist[b] == d:
+				return [a, b]
+	return []
+
+
+## Puts the player and Knight `d` doorways apart, clears noise and the token, Knight patrolling.
+func _place(g, d: int) -> bool:
+	var pr := _pair_at(g.castle, d)
+	if pr.is_empty():
+		return false
+	g.player_room = pr[0]
+	g.knight.room = pr[1]
+	g.noise = 0
+	g.token = -1
+	g.knight.state = "PATROL"
+	g.knight.skip_turns = 0
+	g.knight._compute_plan()
+	return true
+
+
+func _test_normal_knight() -> void:
+	var g = Game.new()
+	g.new_game("ranger", "normal", 77, false)
+	var k = g.knight
+	check(k.fixed_move(), "Normal uses fixed Knight movement")
+
+	# Patrol: always 1 room, no die rolled or consumed.
+	for i in 10:
+		_place(g, 4)
+		var st: int = g.rng.state
+		var nr: int = k.next_roll
+		var walk: Array = k.begin_turn(g._senses())
+		check(k.state == "PATROL", "far and quiet: Patrol")
+		check(walk.size() == mini(1, k.plan.size()), "Patrol moves 1 room every turn")
+		check(g.rng.state == st, "Normal: no Knight die is rolled")
+		check(k.last_roll == 0 and k.next_roll == nr, "Normal: no movement die is consumed")
+
+	# Investigate a new token: 1 room.
+	_place(g, 4)
+	g.noise = 1
+	g.token = g.player_room
+	g.token_serial += 1
+	var w: Array = k.begin_turn(g._senses())
+	check(k.state == "INVESTIGATE" and w.size() == 1, "Investigate moves 1 room every turn")
+
+	# Hunt by sight only (Noise below the threshold): 1 room.
+	_place(g, 1)
+	w = k.begin_turn(g._senses())
+	check(k.state == "HUNT" and not k.charging and w.size() == 1, "sight-only Hunt moves 1 room")
+
+	# Hunt by hearing: up to 2 rooms.
+	_place(g, 4)
+	g.noise = 3
+	w = k.begin_turn(g._senses())
+	check(k.state == "HUNT" and k.charging and w.size() == 2, "hearing Hunt moves 2 rooms")
+
+	# Hearing and seeing at once still counts as hearing (charging), path is only 1 long here.
+	_place(g, 1)
+	g.noise = 4
+	w = k.begin_turn(g._senses())
+	check(k.state == "HUNT" and k.charging and w == [g.player_room], "hear + see: charging, stops on the player")
+
+	# Memory pursuit after losing detection: Investigate at 1 room, no hearing bonus.
+	_place(g, 4)
+	g.noise = 3
+	k.begin_turn(g._senses())            # hears you: Hunt
+	g.reduce_noise(3)                    # goes quiet (token dropped on your room, already handled)
+	k.handled_serial = g.token_serial    # no new clue: pure memory
+	w = k.begin_turn(g._senses())
+	check(k.state == "INVESTIGATE" and w.size() <= 1, "memory pursuit moves up to 1 room")
+
+	# Search: up to 1 room.
+	_place(g, 4)
+	k._start_search(k.room)
+	k._compute_plan()
+	w = k.begin_turn(g._senses())
+	check(k.state == "SEARCH" and w.size() <= 1, "Search moves up to 1 room")
+
+	# Stunned: no move and no encounter, even in your room.
+	_place(g, 0)
+	k.skip_turns = 1
+	g.blessed_turns = 2
+	g._world_phase()
+	check(k.stunned_now and g.phase == "player", "stunned Knight: no move, no encounter")
+
+	# Stops on the player: a hearing charge from 2 rooms away ends in your room with an encounter.
+	g = Game.new()
+	g.new_game("ranger", "normal", 78, false)
+	_place(g, 2)
+	g.noise = 3
+	g.blessed_turns = 2
+	g.spirit_room = g.knight.room
+	g._world_phase()
+	check(g.knight.room == g.player_room and g.phase == "encounter", "charge reaches the player and stops there")
+
+	# From 1 room away, a charge stops on the player instead of walking past.
+	g = Game.new()
+	g.new_game("ranger", "normal", 79, false)
+	_place(g, 1)
+	g.noise = 3
+	g.blessed_turns = 2
+	var walk2: Array = g.knight.begin_turn(g._senses())
+	check(walk2.size() == 1 and walk2[0] == g.player_room, "movement stops on entering the player's room")
+
+
+func _test_easy_hard_unchanged() -> void:
+	var want := {
+		"easy": {"name": "Easy", "move_min": 4, "memory": 1, "hunt_at": 4, "hunt_steps": 1, "search_turns": 1, "sight": 0, "checks_hiding": false},
+		"hard": {"name": "Hard", "move_min": 2, "memory": 3, "hunt_at": 3, "hunt_steps": 2, "search_turns": 3, "sight": 2, "checks_hiding": true},
+	}
+	for d in want:
+		check(Config.DIFFICULTY[d].size() == want[d].size(), "%s has no new settings" % d)
+		for key in want[d]:
+			check(Config.DIFFICULTY[d].get(key) == want[d][key], "%s %s unchanged" % [d, key])
+	for d in ["easy", "hard"]:
+		var g = Game.new()
+		g.new_game("ranger", d, 91, false)
+		var k = g.knight
+		check(not k.fixed_move(), "%s still uses the movement die" % d)
+		var stays := 0
+		for i in 60:
+			_place(g, 4)
+			var pre: int = k.next_roll
+			var w: Array = k.begin_turn(g._senses())
+			check(k.last_roll == pre, "%s: the pre-rolled die is used" % d)
+			if pre < g.diff["move_min"]:
+				stays += 1
+				check(w.is_empty(), "%s: a low roll means no move" % d)
+			else:
+				check(w.size() == 1, "%s: Patrol moves 1 room on a good roll" % d)
+		check(stays > 0 or d == "hard", "%s: some turns the Knight stays" % d)
+		# Hearing charge: Hard 2 rooms, Easy 1, on a good roll.
+		for i in 30:
+			_place(g, 4)
+			g.noise = 4
+			var pre2: int = k.next_roll
+			var w2: Array = k.begin_turn(g._senses())
+			if pre2 >= g.diff["move_min"]:
+				check(w2.size() == (2 if d == "hard" else 1), "%s: charge steps unchanged" % d)
 
 
 # ---------------------------------------------------------------- bot smoke

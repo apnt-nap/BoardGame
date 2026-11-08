@@ -44,7 +44,8 @@ func setup(p_castle, p_diff: Dictionary, p_rng: RandomNumberGenerator, start_roo
 	rng = p_rng
 	room = start_room
 	rebuild_patrol(restored)
-	next_roll = rng.randi_range(1, 6)
+	if not fixed_move():
+		next_roll = rng.randi_range(1, 6)
 	_compute_plan()
 	reason = "Begins its patrol of the Seals"
 
@@ -144,26 +145,42 @@ func _compute_plan() -> void:
 func begin_turn(s: Dictionary) -> Array:
 	turn_no += 1
 	update_state(s)
+	var fixed := fixed_move()
 	var roll := next_roll
 	last_roll = 0
-	next_roll = rng.randi_range(1, 6)
+	if not fixed:
+		next_roll = rng.randi_range(1, 6)
 	stunned_now = skip_turns > 0
 	if skip_turns > 0:
 		skip_turns -= 1
 		log_event("Dazzled by the Lantern: loses its turn in %s" % room_name(room))
 		return []
 	var need: int = diff["move_min"]
-	last_roll = roll
-	if roll < need:
-		log_event("Rolled %d (needs %d+): stays in %s. %s" % [roll, need, room_name(room), reason])
-		return []
+	if not fixed:
+		last_roll = roll
+		if roll < need:
+			log_event("Rolled %d (needs %d+): stays in %s. %s" % [roll, need, room_name(room), reason])
+			return []
+	# Hunting by hearing (Noise at the threshold) moves hunt_steps, even if it also sees you.
+	# Sight-only hunts, memory pursuit (INVESTIGATE), Patrol and Search move 1 room.
 	var steps: int = diff["hunt_steps"] if state == HUNT and charging else 1
 	var walk := plan.slice(0, steps)
+	var head: String = "Moves" if fixed else "Rolled %d (needs %d+): moves" % [roll, need]
 	if walk.is_empty():
-		log_event("Rolled %d: no path, waits in %s. %s" % [roll, room_name(room), reason])
+		log_event("%s: no path, waits in %s. %s" % ["Holds" if fixed else "Rolled %d" % roll, room_name(room), reason])
 	else:
-		log_event("Rolled %d (needs %d+): moves %s -> %s. %s" % [roll, need, room_name(room), room_name(walk.back()), reason])
+		log_event("%s %s -> %s. %s" % [head, room_name(room), room_name(walk.back()), reason])
 	return walk
+
+
+## Normal difficulty: no movement die. The Knight always moves (unless stunned).
+func fixed_move() -> bool:
+	return diff.get("fixed_move", false)
+
+
+## True if the Knight will move on its next turn when not stunned (always on Normal).
+func will_move_next() -> bool:
+	return fixed_move() or next_roll >= diff["move_min"]
 
 
 func step_to(r: int) -> void:
@@ -221,7 +238,7 @@ func debug_lines() -> Array:
 		"Room: %s   Target: %s" % [room_name(room), room_name(target)],
 		"Memory left: %d   Search left: %d" % [memory_left, search_left],
 		"Handled noise #%d   Skip: %d" % [handled_serial, skip_turns],
-		"Next D6 (pre-rolled): %d (moves on %d+)" % [next_roll, diff["move_min"]],
+		"Moves every turn (no die)" if fixed_move() else "Next D6 (pre-rolled): %d (moves on %d+)" % [next_roll, diff["move_min"]],
 		"Plan: %s" % (" > ".join(PackedStringArray(names)) if not names.is_empty() else "(stay)"),
 		"Why: %s" % reason,
 	]

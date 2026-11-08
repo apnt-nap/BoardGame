@@ -48,7 +48,7 @@ func _free_actions(g) -> void:
 			if g.health <= 1 or (g.health < Config.MAX_HEALTH and g.turns_left() < 6):
 				g.use_hero_item()
 		"lantern":
-			if kd <= 1 and g.knight.next_roll >= g.diff["move_min"]:
+			if kd <= 1 and g.knight.will_move_next():
 				g.use_hero_item()
 		"silence":
 			if g.noise >= hunt_at:

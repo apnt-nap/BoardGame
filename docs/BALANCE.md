@@ -1,7 +1,7 @@
 # Balance and AI Evaluation
 
 > **Out of date for the playtest rules (build v1.1).** Every number below was measured with the v1.0 rules
-> (rolled Activate, Focus, Library, Passage Map, old Search table and movement). The bot and simulation now
+> (rolled Activate, Focus, Library, Passage Map, old Search table and movement, Normal Knight movement die). The bot and simulation now
 > run the v1.1 rules, but the simulation has not been re-run, so there are no v1.1 win rates yet.
 
 Build v1.0 · 7 Nov 2026 · raw data: [`sim_results.csv`](sim_results.csv)

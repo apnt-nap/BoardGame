@@ -13,9 +13,10 @@ const SPIRIT_BLESS_TURNS := 5
 
 ## Knight senses per difficulty (the Knight never knows more than this).
 ## sight = how many doorways away it can see you. hunt_steps applies when it charges at loud Noise.
+## fixed_move (Normal only): no movement die; it moves every turn (move_min is then unused).
 const DIFFICULTY := {
 	"easy":   {"name": "Easy",   "move_min": 4, "memory": 1, "hunt_at": 4, "hunt_steps": 1, "search_turns": 1, "sight": 0, "checks_hiding": false},
-	"normal": {"name": "Normal", "move_min": 2, "memory": 2, "hunt_at": 3, "hunt_steps": 1, "search_turns": 2, "sight": 1, "checks_hiding": false},
+	"normal": {"name": "Normal", "move_min": 2, "fixed_move": true, "memory": 2, "hunt_at": 3, "hunt_steps": 2, "search_turns": 2, "sight": 1, "checks_hiding": false},
 	"hard":   {"name": "Hard",   "move_min": 2, "memory": 3, "hunt_at": 3, "hunt_steps": 2, "search_turns": 3, "sight": 2, "checks_hiding": true},
 }
 const DIFFICULTY_ORDER := ["easy", "normal", "hard"]

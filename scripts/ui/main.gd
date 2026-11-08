@@ -267,7 +267,7 @@ func _refresh_menu() -> void:
 		var info: Dictionary = Config.DIFFICULTY[d]
 		var unlocked: bool = profile.difficulty_unlocked(d)
 		b.disabled = not unlocked
-		var desc := "moves on %d+, sight %d, hunts at Noise %d" % [info["move_min"], info["sight"], info["hunt_at"]]
+		var desc := ("moves every turn" if info.get("fixed_move", false) else "moves on %d+" % info["move_min"]) + ", sight %d, hunts at Noise %d" % [info["sight"], info["hunt_at"]]
 		b.text = ("%s\n%s" % [info["name"], desc]) if unlocked else "%s (locked)\nWin on Normal to unlock" % info["name"]
 		b.button_pressed = sel_diff == d
 	var best := ""
