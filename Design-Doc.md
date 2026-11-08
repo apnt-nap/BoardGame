@@ -10,6 +10,7 @@
 > - **Rune Key:** once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal).
 > - **Normal Knight: no movement die.** It moves every turn unless stunned: 2 rooms when it hears you (Noise at the threshold, even if it also sees you), 1 room otherwise (Patrol, Investigate, Search, sight-only Hunt, memory pursuit). It stops on entering your room. Easy and Hard keep the die.
 > - **Seal signal:** restoring the 1st or 2nd Seal sends a signal from its room. On its next turn the Knight heads there (2 rooms per turn, no die, all difficulties) unless it hears or sees you, which comes first and cancels the signal. Stun keeps the signal. Reaching the Seal with nobody there starts a Search. A newer signal replaces an older one. The third Seal wins at once with no signal.
+> - **Wandering Spirit removed,** with the Priest hero (Blessing) and the Spirit Bell. After your action the Knight acts straight away. Five heroes (Ranger, Alchemist, Mage, Knight, Thief) and four treasures (Ward Charm, Old Shield, Emergency Ration, Smoke Vial) remain.
 > - **Line of sight:** the Knight sees you only in a straight row or column through open doorways, up to its sight range. It cannot see around a corner or through a wall.
 > - The bot results in `docs/BALANCE.md` were measured with the v1.0 rules and have not been re-run for v1.1.
 
@@ -24,7 +25,7 @@ What changes from the paper version:
 - The castle grows from 3×3 to 5×5, is randomized every run, and has special rooms.
 - The castle shifts each time a Seal is restored.
 - Items are less luck-based, and bad rolls or bad hands always leave a useful action.
-- A second NPC, the Wandering Spirit, joins the Knight.
+- ~~A second NPC, the Wandering Spirit, joins the Knight.~~ Removed in playtest v1.1.
 - Three difficulty levels change only what the Knight senses and how fast it reacts.
 - Heroes unlock as you win.
 
@@ -55,16 +56,15 @@ The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight
 2. **Misses build up.** A failed Search gives +1 to your next Search roll (used up on that roll, never more than +1, result capped at 6). Activate has no roll any more (see Playtest rules).
 3. **One free redraw per run.** Before playing your card, discard both cards and draw 2 new ones. It costs no turn, and you get it once per run. (This replaced Focus.)
 
-**Items are less luck-based.** A Search finds a Minor Treasure on a 6 (playtest v1.1; a failed Search's +1 bonus counts). The Armory always holds one, and you can carry 2 instead of 1. Two new treasures fit the bigger castle:
+**Items are less luck-based.** A Search finds a Minor Treasure on a 6 (playtest v1.1; a failed Search's +1 bonus counts). The Armory always holds one, and you can carry 2 instead of 1. One new treasure fits the bigger castle:
 
 | Treasure | Effect |
 | --- | --- |
 | Smoke Vial | In an encounter, escape to an adjacent room with no damage and no Noise |
-| Spirit Bell | Push the Wandering Spirit up to 2 rooms away from you |
 
 Three existing treasures (Ward Charm, Old Shield, Emergency Ration) stay as they are. The Secret Passage Map was removed in the playtest rules.
 
-## The Cursed Knight and the Wandering Spirit
+## The Cursed Knight
 
 The Knight is a state machine with four states and a short memory of where it last heard you. It never cheats: it knows only what its senses tell it, and it never sees your room unless it is hunting or you share a room.
 
@@ -79,7 +79,7 @@ Search is the new state. In the paper rules the Knight gave up the moment it rea
 
 The Knight now guards restored Seals more closely. Each restored Seal is added to its patrol loop twice, so the castle feels more dangerous as you get closer to winning.
 
-**The Wandering Spirit** is a second, harmless NPC. It drifts 1 room at random each turn and never chases you. If it ends a turn in your room, it shrieks: Noise +1 and the Noise token moves to your room. A Spirit Bell pushes it away, or you can steer it toward the Knight's side of the castle. It adds a risk you can see coming and plan around.
+**The Wandering Spirit** was removed in playtest v1.1, together with the Priest hero, the Blessing and the Spirit Bell.
 
 ## Difficulty levels
 
@@ -109,7 +109,6 @@ Every run has a new castle, and wins unlock new heroes and the next difficulty. 
 | Mage | Silence Scroll: Noise −2 | Win 1 game |
 | Knight | Rune Key: once per run, restore a Seal with 1 Shard instead of 2 | Win on Normal |
 | Thief (new) | Smoke Vial: escape an encounter with no damage and no Noise | Win with 3 different heroes |
-| Priest (new) | Blessing: the Spirit cannot shriek at you for 5 turns | Win on Hard |
 
 Hard unlocks after your first Normal win. The end screen shows your turns, damage taken and how often the Knight found you, so players have a score to beat.
 

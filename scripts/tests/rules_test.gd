@@ -7,6 +7,7 @@ const Config = preload("res://scripts/core/config.gd")
 const Game = preload("res://scripts/core/game.gd")
 const Castle = preload("res://scripts/core/castle.gd")
 const Bot = preload("res://scripts/core/bot.gd")
+const Profile = preload("res://scripts/ui/profile.gd")
 
 var failures := 0
 var checks := 0
@@ -30,6 +31,7 @@ func _run() -> void:
 	_test_easy_hard_unchanged()
 	_test_line_of_sight()
 	_test_seal_signal()
+	_test_spirit_removed()
 	_test_bot_games()
 	print("%d checks, %d failed" % [checks, failures])
 	print("Rules tests passed" if failures == 0 else "Rules tests FAILED")
@@ -44,7 +46,7 @@ func check(ok: bool, what: String) -> void:
 		print("FAIL: " + what)
 
 
-## A fresh game whose world turn cannot interfere: the Knight is stunned and the Spirit blessed.
+## A fresh game whose world turn cannot interfere: the Knight is stunned and far away.
 func _game(hero: String = "ranger", seed_value: int = 1234) -> Object:
 	var g = Game.new()
 	g.new_game(hero, "normal", seed_value, false)
@@ -54,7 +56,6 @@ func _game(hero: String = "ranger", seed_value: int = 1234) -> Object:
 
 func _calm(g) -> void:
 	g.knight.skip_turns = 1
-	g.blessed_turns = 2
 	# Keep the Knight far away so a stun can't be the only thing preventing an encounter.
 	var dist: Array = g.castle.distances(g.player_room)
 	g.knight.room = dist.find(dist.max())
@@ -466,7 +467,6 @@ func _test_normal_knight() -> void:
 	# Stunned: no move and no encounter, even in your room.
 	_place(g, 0)
 	k.skip_turns = 1
-	g.blessed_turns = 2
 	g._world_phase()
 	check(k.stunned_now and g.phase == "player", "stunned Knight: no move, no encounter")
 
@@ -475,8 +475,6 @@ func _test_normal_knight() -> void:
 	g.new_game("ranger", "normal", 78, false)
 	_place(g, 2)
 	g.noise = 3
-	g.blessed_turns = 2
-	g.spirit_room = g.knight.room
 	g._world_phase()
 	check(g.knight.room == g.player_room and g.phase == "encounter", "charge reaches the player and stops there")
 
@@ -485,7 +483,6 @@ func _test_normal_knight() -> void:
 	g.new_game("ranger", "normal", 79, false)
 	_place(g, 1)
 	g.noise = 3
-	g.blessed_turns = 2
 	var walk2: Array = g.knight.begin_turn(g._senses())
 	check(walk2.size() == 1 and walk2[0] == g.player_room, "movement stops on entering the player's room")
 
@@ -571,7 +568,6 @@ func _test_seal_signal() -> void:
 		g.knight._compute_plan()
 		g.noise = 0
 		g.token = -1
-		g.blessed_turns = 2
 		g.shards = 2
 		_set_hand(g, ["activate", "search"])
 		var pre_roll: int = k.next_roll
@@ -604,7 +600,6 @@ func _test_seal_signal() -> void:
 	g2.token = -1
 	g2.knight.receive_signal(g2.castle.seals[0])
 	g2.shards = 2
-	g2.blessed_turns = 2
 	g2.knight.skip_turns = 1
 	_set_hand(g2, ["activate", "search"])
 	g2.take_events()
@@ -660,7 +655,6 @@ func _test_seal_signal() -> void:
 	g5.knight.room = pair[1]
 	g5.noise = 0
 	g5.token = -1
-	g5.blessed_turns = 2
 	g5.knight.receive_signal(pair[0])
 	g5._world_phase()
 	check(g5.knight.room == pair[0] and g5.phase == "encounter", "signal pursuit reaches the player and the encounter starts at the normal step")
@@ -673,15 +667,76 @@ func _test_seal_signal() -> void:
 	g6.player_room = g6.castle.seals[2]
 	g6.shards = 2
 	var kr: int = g6.knight.room
-	var sr: int = g6.spirit_room
 	_set_hand(g6, ["activate", "search"])
 	g6.take_events()
 	g6.play_card(0, "normal")
 	var any_signal := false
 	for e in g6.take_events():
-		if e["type"] in ["signal", "knight", "spirit_move"]:
+		if e["type"] in ["signal", "knight"]:
 			any_signal = true
-	check(g6.phase == "won" and not any_signal and g6.knight.room == kr and g6.spirit_room == sr, "third Seal wins with no signal and no world actions")
+	check(g6.phase == "won" and not any_signal and g6.knight.room == kr, "third Seal wins with no signal and no Knight action")
+
+
+# ---------------------------------------------------------------- spirit / priest removal
+
+func _test_spirit_removed() -> void:
+	check(Config.HERO_ORDER == ["ranger", "alchemist", "mage", "knight", "thief"], "five heroes, ids unchanged")
+	check(not Config.HEROES.has("priest"), "Priest removed")
+	check(Config.TREASURES == ["ward_charm", "old_shield", "ration", "smoke_vial"], "four treasures")
+	check(not Config.TREASURE_INFO.has("spirit_bell"), "Spirit Bell removed")
+	for h in Config.HERO_ORDER:
+		check(Config.HEROES[h]["item"] != "blessing", "no hero has the Blessing")
+
+	# New run setup and turn progression for every hero: no Spirit, turn advances, Knight acts.
+	for h in Config.HERO_ORDER:
+		var g = Game.new()
+		g.new_game(h, "normal", 600, false)
+		check(not ("spirit_room" in g) and not ("blessed_turns" in g), "%s: no Spirit state" % h)
+		check(g.phase == "player" and g.hand.size() == 2 and g.turn == 1, "%s: new run starts on turn 1 with 2 cards" % h)
+		g.take_events()
+		_set_hand(g, ["search", "dash"])
+		g.play_card(0, "sneak_quiet")
+		var types := []
+		for e in g.take_events():
+			types.append(e["type"])
+		check(not ("spirit_move" in types) and not ("shriek" in types) and not ("spirit" in types), "%s: no Spirit events" % h)
+		check("knight" in types, "%s: the Knight acts right after the player" % h)
+		check(g.phase != "player" or g.turn == 2, "%s: turn advances" % h)
+
+	# Treasure generation only yields the four treasures.
+	var g2 = Game.new()
+	g2.new_game("ranger", "normal", 601, false)
+	for i in 400:
+		g2.treasures = []
+		g2._gain_treasure()
+		check(g2.treasures.size() == 1 and g2.treasures[0] in Config.TREASURES, "treasure drawn from the 4-item pool")
+
+	# Encounter flee still works without a Spirit (picks a neighbouring room).
+	for i in 50:
+		var f: int = g2._flee_room()
+		check(f in g2.castle.neighbors(g2.player_room), "flee goes to a neighbouring room")
+
+	# Old save with the removed hero: loads, keeps unlocks, never offers the Priest.
+	var path := "user://test_old_profile.cfg"
+	var cf := ConfigFile.new()
+	cf.set_value("p", "games", 9)
+	cf.set_value("p", "wins", 4)
+	cf.set_value("p", "wins_by_diff", {"easy": 1, "normal": 2, "hard": 1})
+	cf.set_value("p", "heroes_won", ["ranger", "priest", "mage"])
+	cf.set_value("p", "best_turns", {"hard": 25})
+	cf.save(path)
+	var pr = Profile.new()
+	pr.path = path
+	pr.load_profile()
+	check(pr.wins == 4 and pr.wins_by_diff["hard"] == 1, "old save counters load")
+	check(pr.hero_unlocked("thief"), "old Priest win still counts toward the Thief unlock")
+	check(pr.hero_unlocked("knight") and pr.hero_unlocked("mage") and pr.difficulty_unlocked("hard"), "old unlocks preserved")
+	var names := {}
+	for h in Config.HERO_ORDER:
+		names[h] = Config.HEROES[h]["name"]
+	var unlocked: Array = pr.record("ranger", "normal", true, 20, names)
+	check(not ("priest" in str(unlocked).to_lower()), "recording a win never mentions the Priest")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 # ---------------------------------------------------------------- bot smoke

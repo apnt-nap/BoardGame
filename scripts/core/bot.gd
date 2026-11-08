@@ -53,16 +53,12 @@ func _free_actions(g) -> void:
 		"silence":
 			if g.noise >= hunt_at:
 				g.use_hero_item()
-		"blessing":
-			g.use_hero_item()
 	# Treasures.
 	for i in range(g.treasures.size() - 1, -1, -1):
 		var t: String = g.treasures[i]
 		if t == "ward_charm" and g.noise >= hunt_at - 1:
 			g.use_treasure(i)
 		elif t == "ration" and g.health == 1:
-			g.use_treasure(i)
-		elif t == "spirit_bell" and g.castle.distance(g.player_room, g.spirit_room) <= 1:
 			g.use_treasure(i)
 	# Room feature.
 	var ra: String = g.room_action()
@@ -140,12 +136,16 @@ func _best_step(g, options: Array, goal: int) -> int:
 	var best_score := 99999.0
 	for r in options:
 		var score: float = g.castle.distance(r, goal) * 1.0 + _danger(g, r)
-		if r == g.spirit_room:
-			score += 0.5
 		if score < best_score:
 			best_score = score
 			best = r
 	return best
+
+
+## Somewhere to wander when there is no goal: the room farthest from the Knight.
+func _far_from_knight(g) -> int:
+	var dist: Array = g.castle.distances(g.knight.room)
+	return dist.find(dist.max())
 
 
 func _find(g, card: String) -> int:
@@ -185,7 +185,7 @@ func _choose_card(g) -> Dictionary:
 		var h2 := _find(g, "hide")
 		return {"i": h2 if h2 >= 0 else 0, "mode": "normal" if h2 >= 0 else "sneak_quiet", "target": -1}
 	if goal < 0 or goal == g.player_room:
-		goal = g.spirit_room if goal < 0 else goal
+		goal = _far_from_knight(g) if goal < 0 else goal
 	var dist_goal: int = g.castle.distance(g.player_room, goal)
 	var d := _find(g, "dash")
 	if d >= 0 and dist_goal >= 2 and g.noise + 1 < hunt_at - 1 and kd >= 3:

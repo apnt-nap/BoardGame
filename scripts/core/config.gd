@@ -9,7 +9,6 @@ const MAX_TREASURES := 2
 const SHARDS_PER_SEAL := 2
 const EXTRA_DOOR_CHANCE := 0.30
 const SEAL_MIN_DISTANCE := 3
-const SPIRIT_BLESS_TURNS := 5
 
 ## Knight senses per difficulty (the Knight never knows more than this).
 ## sight = how many doorways away it can see you. hunt_steps applies when it charges at loud Noise.
@@ -31,13 +30,12 @@ const CARDS := {
 	"hide":     {"name": "Hide",     "text": "Stay. Noise -2."},
 }
 
-const TREASURES := ["ward_charm", "old_shield", "ration", "smoke_vial", "spirit_bell"]
+const TREASURES := ["ward_charm", "old_shield", "ration", "smoke_vial"]
 const TREASURE_INFO := {
 	"ward_charm":  {"name": "Ward Charm",         "text": "Noise -1."},
 	"old_shield":  {"name": "Old Shield",         "text": "Blocks 1 damage automatically."},
 	"ration":      {"name": "Emergency Ration",   "text": "Heal 1 (only at 1 Health)."},
 	"smoke_vial":  {"name": "Smoke Vial",         "text": "Encounter: escape with no damage and no noise."},
-	"spirit_bell": {"name": "Spirit Bell",        "text": "Push the Wandering Spirit 2 rooms away."},
 }
 
 const HEROES := {
@@ -46,9 +44,9 @@ const HEROES := {
 	"mage":      {"name": "Mage",      "item": "silence",   "item_name": "Silence Scroll", "text": "Noise -2. In an encounter: also escape 1 room.", "unlock": "Win once"},
 	"knight":    {"name": "Knight",    "item": "rune_key",  "item_name": "Rune Key",       "text": "Once per run: restore a Seal with 1 Shard instead of 2.", "unlock": "Win on Normal"},
 	"thief":     {"name": "Thief",     "item": "smoke",     "item_name": "Smoke Vial",     "text": "Encounter: escape with no damage and no noise.", "unlock": "Win with 3 different heroes"},
-	"priest":    {"name": "Priest",    "item": "blessing",  "item_name": "Blessing",       "text": "The Spirit cannot shriek at you for 5 turns.", "unlock": "Win on Hard"},
 }
-const HERO_ORDER := ["ranger", "alchemist", "mage", "knight", "thief", "priest"]
+## Hero ids are stable strings ("priest" was removed; old saves may still list it in heroes_won).
+const HERO_ORDER := ["ranger", "alchemist", "mage", "knight", "thief"]
 
 const SPECIALS := {
 	"chapel":     {"name": "Chapel",          "text": "Heal 1. Once per run."},

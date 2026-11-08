@@ -75,8 +75,6 @@ func _piece_target(piece: String, r: int) -> Vector2:
 			return c + Vector2(-o, o * 0.6)
 		"knight":
 			return c + Vector2(o, -o * 0.3)
-		"spirit":
-			return c + Vector2(-o * 0.9, -o * 0.9)
 	return c
 
 
@@ -223,12 +221,6 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([tip + dir * c * 0.08, tip + side, tip - side]), Color(kcol, 0.85))
 
 	# Pieces.
-	if _pos.has("spirit"):
-		var sp2: Vector2 = _pos["spirit"] + Vector2(0, sin(_time * 2.5) * 3.0)
-		draw_circle(sp2, c * 0.11, Color(P.SPIRIT, 0.18))
-		draw_circle(sp2, c * 0.07, Color(P.SPIRIT, 0.55))
-		draw_circle(sp2 + Vector2(-4, -2), 2.5, P.BG)
-		draw_circle(sp2 + Vector2(4, -2), 2.5, P.BG)
 	var player_tex := Art.tex(P.PLAYER_ART)
 	var knight_tex := Art.tex(P.KNIGHT_ART)
 	if _pos.has("player"):

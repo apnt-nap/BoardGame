@@ -28,8 +28,6 @@ var search_bonus := 0
 var searched: Dictionary = {}
 var used_once: Dictionary = {}
 var room_action_used := false
-var blessed_turns := 0
-var spirit_room := 0
 var corrupted_types: Array = []
 
 var deck: Array = []
@@ -67,11 +65,6 @@ func new_game(p_hero: String, p_difficulty: String, seed_value: int = 0, log_kni
 	if far.is_empty():
 		far = [dist.find(dist.max())]
 	var knight_start: int = _pick(far)
-	var spirit_opts := []
-	for r in castle.room_count():
-		if r != player_room and r != knight_start:
-			spirit_opts.append(r)
-	spirit_room = _pick(spirit_opts)
 
 	knight = Knight.new()
 	knight.logging = log_knight
@@ -385,8 +378,6 @@ func can_use_treasure(t: String) -> bool:
 			return noise > 0
 		"ration":
 			return health == 1
-		"spirit_bell":
-			return phase == "player"
 	return false
 
 
@@ -402,21 +393,7 @@ func use_treasure(i: int) -> bool:
 		"ration":
 			health += 1
 			_ev("heal", "You eat the Emergency Ration. +1 Health.")
-		"spirit_bell":
-			_push_spirit()
 	return true
-
-
-func _push_spirit() -> void:
-	var best: int = spirit_room
-	var best_d := -1
-	var dist: Array = castle.distances(player_room)
-	for r in rooms_within(spirit_room, 2):
-		if dist[r] > best_d:
-			best_d = dist[r]
-			best = r
-	spirit_room = best
-	_ev("spirit", "The Spirit Bell chimes and the Spirit drifts away to %s." % room_name(best))
 
 
 func hero_item() -> String:
@@ -427,7 +404,7 @@ func can_use_hero_item() -> bool:
 	if not hero_item_ready or (phase != "player" and phase != "encounter"):
 		return false
 	match hero_item():
-		"lantern", "blessing":
+		"lantern":
 			return phase == "player"
 		"potion":
 			return health < Config.MAX_HEALTH  # in an encounter you still RUN or HIDE afterwards
@@ -450,9 +427,6 @@ func use_hero_item() -> bool:
 		"silence":
 			reduce_noise(2)
 			_ev("hero", "The Silence Scroll crumbles. Every echo dies.")
-		"blessing":
-			blessed_turns = Config.SPIRIT_BLESS_TURNS
-			_ev("hero", "A Blessing settles on you. The Spirit cannot betray you for %d turns." % blessed_turns)
 	return true
 
 
@@ -494,19 +468,8 @@ func _senses() -> Dictionary:
 	}
 
 
+## After the player's action (and the victory check), the Cursed Knight acts.
 func _world_phase() -> void:
-	# Wandering Spirit drifts one room.
-	var nbs: Array = castle.neighbors(spirit_room)
-	var from_s := spirit_room
-	spirit_room = _pick(nbs)
-	_ev("spirit_move", "", {"from": from_s, "to": spirit_room})
-	if spirit_room == player_room:
-		if blessed_turns > 0:
-			_ev("spirit", "The Wandering Spirit circles you but the Blessing keeps it quiet.")
-		else:
-			_ev("shriek", "The Wandering Spirit finds you and SHRIEKS!")
-			add_noise(1, player_room)
-	# Cursed Knight.
 	var from_k: int = knight.room
 	var walk: Array = knight.begin_turn(_senses())
 	var walked := []
@@ -526,8 +489,6 @@ func _world_phase() -> void:
 
 
 func _end_turn() -> void:
-	if blessed_turns > 0:
-		blessed_turns -= 1
 	turn += 1
 	if turn > Config.TURN_LIMIT:
 		_lose("Midnight strikes. The curse sets like stone, and so do you.")
@@ -617,12 +578,7 @@ func resolve_encounter(choice: String) -> bool:
 
 
 func _flee_room() -> int:
-	var opts: Array = castle.neighbors(player_room)
-	var safe := []
-	for r in opts:
-		if r != spirit_room:
-			safe.append(r)
-	return _pick(safe if not safe.is_empty() else opts)
+	return _pick(castle.neighbors(player_room))
 
 
 func _damage(text: String) -> void:

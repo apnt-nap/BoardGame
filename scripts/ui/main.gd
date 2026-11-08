@@ -499,7 +499,6 @@ func _start_game() -> void:
 	board.targets = []
 	board.place("player", game.player_room, true)
 	board.place("knight", game.knight.room, true)
-	board.place("spirit", game.spirit_room, true)
 	pending = {}
 	queue = []
 	busy = false
@@ -511,7 +510,6 @@ func _start_game() -> void:
 	await get_tree().process_frame
 	board.place("player", game.player_room, true)
 	board.place("knight", game.knight.room, true)
-	board.place("spirit", game.spirit_room, true)
 	_after_action()
 
 
@@ -540,7 +538,6 @@ func _pump() -> void:
 func _sync_pieces() -> void:
 	board.place("player", game.player_room)
 	board.place("knight", game.knight.room)
-	board.place("spirit", game.spirit_room)
 
 
 func _wait(t: float) -> void:
@@ -560,8 +557,6 @@ func _handle(e: Dictionary) -> void:
 			board.place("player", e["to"])
 			sfx.play("move")
 			await _wait(0.22)
-		"spirit_move":
-			board.place("spirit", e["to"])
 		"knight":
 			if e["text"] != "":
 				knight_log.append(e["text"])
@@ -614,12 +609,6 @@ func _handle(e: Dictionary) -> void:
 			_float_text(game.player_room, "UNSEEN", P.SPIRIT)
 			_log(e["text"], P.SPIRIT)
 			await _wait(0.4)
-		"shriek":
-			sfx.play("shriek")
-			board.flash = Color(P.SPIRIT, 0.25)
-			_float_text(game.spirit_room, "SHRIEK!", P.SPIRIT)
-			_log(e["text"], P.SPIRIT)
-			await _wait(0.4)
 		"seal":
 			sfx.play("seal")
 			board.flash = Color(P.SEAL_COLORS[e["seal"]], 0.35)
@@ -646,8 +635,8 @@ func _handle(e: Dictionary) -> void:
 		"shard":
 			sfx.play("good")
 			_float_text(game.player_room, "+%d SHARD" % e["amount"], P.SPIRIT)
-		"treasure", "armory", "hero", "escape", "passage", "redraw", "spirit":
-			sfx.play("good" if t != "spirit" else "click")
+		"treasure", "armory", "hero", "escape", "passage", "redraw":
+			sfx.play("good")
 			_log(e["text"], P.GOLD)
 		"won":
 			sfx.play("win")

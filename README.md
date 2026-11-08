@@ -44,7 +44,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 
 **Goal.** Restore all three Seals (2 Rune Shards each) before your Health hits 0 or Turn 36 ends.
 
-**Your turn.** You hold 2 Action Cards. Play 1; the other is discarded. Then the Wandering Spirit and the Knight move.
+**Your turn.** You hold 2 Action Cards. Play 1; the other is discarded. Then the Knight moves.
 
 | Card | Copies | Effect |
 |---|---|---|
@@ -67,7 +67,6 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 - **Encounter** (the Knight ends its move in your room): **RUN** (1–2: −1 Health; always flee 1 room, Noise +1),
   **HIDE** (1–3: −1 Health and flee; 4–6: safe, but it's still in the room), or use an item.
   Potion, Ward Charm and Ration can be used first, and then you still choose.
-- **Wandering Spirit:** harmless, drifts randomly. If it ends in your room it shrieks: Noise +1.
 
 **Reading the Knight.** The icon above it shows its state: `~` Patrol, `?` Investigate, `!` Hunt,
 `?!` Search. The arrow shows its next step. Rooms tinted red are inside its line of sight (Normal/Hard): only straight down a row or column through open doorways, never around a corner or through a wall.
@@ -85,7 +84,6 @@ mind** (state, memory, pre-rolled die, planned route, recent decisions) · `M` m
 | Mage | Silence Scroll: Noise −2; in an encounter, also escape | Win once |
 | Knight | Rune Key: once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal) | Win on Normal |
 | Thief | Smoke Vial: escape an encounter with no damage and no noise | Win with 3 different heroes |
-| Priest | Blessing: the Spirit can't shriek at you for 5 turns | Win on Hard |
 
 Hard unlocks after a Normal win. The end screen shows turns, damage taken and times found.
 
@@ -160,7 +158,7 @@ scripts/core/             game logic, no visuals (shared by the game and the sim
   config.gd               every rule number, card, treasure, hero, difficulty
   castle.gd               random 5x5 generation, doorways, pathfinding, keep shift, corruption
   knight_ai.gd            Cursed Knight state machine + decision log
-  game.gd                 turn loop, cards, dice, noise, encounters, items, Spirit
+  game.gd                 turn loop, cards, dice, noise, encounters, items
   bot.gd                  simulated player
 scripts/ui/               visuals only
   palette.gd              colours, icons, room names: reskin here
@@ -186,9 +184,9 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts
 
 Crop rectangles are listed at the top of `scripts/tools/import_art.gd`. Which picture goes where (room tiles per room type,
 card art, hero portraits) is set in `scripts/ui/palette.gd`. Any element whose file is missing falls back to the flat vector style.
-Thief and Priest have no portraits in the PDF yet; they borrow the Hide card and Use Item art.
+Thief has no portrait in the PDF yet; it borrows the Hide card art.
 
 **Reskinning.** Every colour is in `scripts/ui/palette.gd`. To use painted icons, map a room type to a texture
 in `ICON_TEXTURES` (for example `"chapel": "res://art/chapel.png"`). For real sounds, drop
 `res://audio/<hook>.ogg` or `.wav` files named after the hooks in `sfx.gd` (`seal`, `damage`, `encounter`,
-`knight_step`, `shriek`, `bell`, `win`, `lose`, …). They replace the synthesized placeholders automatically.
+`knight_step`, `bell`, `win`, `lose`, …). They replace the synthesized placeholders automatically.
