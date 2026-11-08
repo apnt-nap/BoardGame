@@ -280,12 +280,12 @@ func _search() -> void:
 		add_noise(1, player_room)
 		return
 	searched[player_room] = true
-	# 2-4: 1 Shard. 5-6: 1 Shard and a treasure.
+	# 2-5: 1 Shard. 6: 1 Shard and a treasure (modified roll, so a natural 5 + bonus counts).
 	shards += 1
 	stats["shards"] += 1
-	_ev("dice", "Search roll %d: 1 Rune Shard%s." % [roll, " and a treasure" if roll >= 5 else ""], {"roll": natural, "ok": true})
+	_ev("dice", "Search roll %d: 1 Rune Shard%s." % [roll, " and a treasure" if roll >= 6 else ""], {"roll": natural, "ok": true})
 	_ev("shard", "+1 Shard", {"amount": 1})
-	if roll >= 5:
+	if roll >= 6:
 		_gain_treasure()
 
 

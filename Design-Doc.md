@@ -3,7 +3,7 @@
 > **Playtest rules (build v1.1, 8 Nov 2026).** These override anything below that disagrees.
 >
 > - **Cards** (deck unchanged: 2 Explore, 2 Dash, 6 Search, 4 Activate, 2 Hide). Explore: move silently up to 2 rooms. Dash: move up to 3 rooms, Noise +1 in total, token at the destination. Hide card: stay, Noise −2 (the encounter HIDE is unchanged). Sneak (any card): move 1 room silently, or stay and lower Noise by 1 (allowed at Noise 0). Noise stays between 0 and 5.
-> - **Search** (not on a Seal, each room once): D6 1 fail, Noise +1 and token here · 2–4 one Shard · 5–6 one Shard and a treasure. A fail gives +1 to the next Search only (no stacking, capped at 6).
+> - **Search** (not on a Seal, each room once): D6 1 fail, Noise +1 and token here · 2–5 one Shard · 6 one Shard and a treasure. A fail gives +1 to the next Search only (no stacking, capped at 6).
 > - **Activate:** on an unrestored Seal with 2 Shards, it always succeeds. No roll, no miss bonus, no Noise change, no Focus. The third Seal still wins at once.
 > - **Focus is gone.** Instead you get one free redraw per run, before playing your card.
 > - **Removed:** the Library room and the Secret Passage Map treasure. Rooms are now Chapel, Armory, Bell Tower and Secret Passage.
@@ -53,7 +53,7 @@ The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight
 2. **Misses build up.** A failed Search gives +1 to your next Search roll (used up on that roll, never more than +1, result capped at 6). Activate has no roll any more (see Playtest rules).
 3. **One free redraw per run.** Before playing your card, discard both cards and draw 2 new ones. It costs no turn, and you get it once per run. (This replaced Focus.)
 
-**Items are less luck-based.** A Search finds a Minor Treasure on a 5 or 6, not only a 6. The Armory always holds one, and you can carry 2 instead of 1. Two new treasures fit the bigger castle:
+**Items are less luck-based.** A Search finds a Minor Treasure on a 6 (playtest v1.1; a failed Search's +1 bonus counts). The Armory always holds one, and you can carry 2 instead of 1. Two new treasures fit the bigger castle:
 
 | Treasure | Effect |
 | --- | --- |

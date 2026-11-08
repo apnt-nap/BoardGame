@@ -26,7 +26,7 @@ const DECK := {"explore": 2, "dash": 2, "search": 6, "activate": 4, "hide": 2}
 const CARDS := {
 	"explore":  {"name": "Explore",  "text": "Move up to 2 rooms. Silent."},
 	"dash":     {"name": "Dash",     "text": "Move up to 3 rooms. Noise +1 (token at the end room)."},
-	"search":   {"name": "Search",   "text": "Roll D6: 1 fail (+1 Noise, next Search +1) | 2-4 one Shard | 5-6 one Shard + a Treasure."},
+	"search":   {"name": "Search",   "text": "Roll D6: 1 fail (+1 Noise, next Search +1) | 2-5 one Shard | 6 one Shard + a Treasure."},
 	"activate": {"name": "Activate", "text": "On an unrestored Seal: spend 2 Shards to restore it. Always succeeds."},
 	"hide":     {"name": "Hide",     "text": "Stay. Noise -2."},
 }

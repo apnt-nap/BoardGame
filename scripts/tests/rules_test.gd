@@ -225,10 +225,16 @@ func _test_search() -> void:
 			check(not g.searched.has(room), "a failed Search leaves the room searchable")
 		else:
 			check(g.shards == 1, "Search %d gives exactly 1 Shard" % roll)
-			check(g.treasures.size() == (1 if roll >= 5 else 0), "Search %d treasure only on 5-6" % roll)
+			check(g.treasures.size() == (1 if roll == 6 else 0), "Search %d: treasure only on a modified 6" % roll)
+			if natural == 5 and bonus == 1:
+				seen["5+1"] = true
+				check(g.treasures.size() == 1, "natural 5 + miss bonus = 6 finds a treasure")
+			if natural == 5 and bonus == 0:
+				seen["5"] = true
+				check(g.treasures.size() == 0, "natural 5 with no bonus: Shard only")
 			check(g.search_bonus == 0, "the Search bonus is used up")
 			check(g.searched.has(room), "a successful Search marks the room searched")
-	check(seen.has(1) and seen.has(6), "Search rolled the full range in 600 tries")
+	check(seen.has(1) and seen.has(6) and seen.has("5+1") and seen.has("5"), "Search rolled the full range in 600 tries")
 
 	# Bonus does not stack: a fail while a bonus is pending can't happen, and a fail sets it to 1, not 2.
 	g.search_bonus = 1

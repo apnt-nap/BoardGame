@@ -50,7 +50,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 |---|---|---|
 | Explore | 2 | Move up to 2 rooms. Silent. |
 | Dash | 2 | Move up to 3 rooms. Noise +1 in total, the token goes to where you stop. |
-| Search | 6 | Not on a Seal. D6: 1 fail (+1 Noise, token here) · 2–4 one Shard · 5–6 one Shard and a Minor Treasure. Each room can be searched successfully once. |
+| Search | 6 | Not on a Seal. D6: 1 fail (+1 Noise, token here) · 2–5 one Shard · 6 one Shard and a Minor Treasure (the miss bonus counts, so a 5 after a failed Search also finds one). Each room can be searched successfully once. |
 | Activate | 4 | On an unrestored Seal: spend 2 Shards and the Seal is restored. No roll, it always works. |
 | Hide | 2 | Stay. Noise −2 (needs Noise above 0). |
 
