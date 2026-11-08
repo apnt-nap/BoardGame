@@ -9,6 +9,7 @@
 > - **Removed:** the Library room and the Secret Passage Map treasure. Rooms are now Chapel, Armory, Bell Tower and Secret Passage.
 > - **Rune Key:** once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal).
 > - **Normal Knight: no movement die.** It moves every turn unless stunned: 2 rooms when it hears you (Noise at the threshold, even if it also sees you), 1 room otherwise (Patrol, Investigate, Search, sight-only Hunt, memory pursuit). It stops on entering your room. Easy and Hard keep the die.
+> - **Line of sight:** the Knight sees you only in a straight row or column through open doorways, up to its sight range. It cannot see around a corner or through a wall.
 > - The bot results in `docs/BALANCE.md` were measured with the v1.0 rules and have not been re-run for v1.1.
 
 Nov 7, 2026 · @Asia · updated after bot tuning for build v1.0 (see "Tuning changes" at the end)
@@ -90,7 +91,7 @@ Difficulty changes only the Knight's senses and reactions, never the rules you p
 | Starts hunting at Noise | 4 | 3 | 3 |
 | Steps per move when hunting | 1 | 2 (playtest v1.1; was 1) | 2 |
 | Search state lasts | 1 turn | 2 turns | 3 turns |
-| Sees you through doorways (sight) | 0 (same room only) | 1 | 2 |
+| Sees you down a straight corridor of open doorways (sight, rooms) | 0 (same room only) | 1 | 2 |
 | Encounter HIDE is safe on | 4–6 | 4–6 | 5–6 (it checks hiding spots) |
 | Target player win rate | 65–75% | 45–55% | 25–35% |
 

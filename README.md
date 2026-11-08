@@ -70,7 +70,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 - **Wandering Spirit:** harmless, drifts randomly. If it ends in your room it shrieks: Noise +1.
 
 **Reading the Knight.** The icon above it shows its state: `~` Patrol, `?` Investigate, `!` Hunt,
-`?!` Search. The arrow shows its next step. Rooms tinted red are inside its line of sight (Normal/Hard).
+`?!` Search. The arrow shows its next step. Rooms tinted red are inside its line of sight (Normal/Hard): only straight down a row or column through open doorways, never around a corner or through a wall.
 The orange token is the last noise it heard.
 
 **Controls.** Mouse for everything · `1`/`2` play a card · `Esc` cancels a move · **`F1` shows the Knight's
@@ -113,8 +113,8 @@ is logged with its reason, both on screen (F1) and in `%APPDATA%\Godot\app_userd
 | Difficulty | Moves on | Memory | Hunts at Noise | Steps when charging | Search | Sight | Hide check |
 |---|---|---|---|---|---|---|---|
 | Easy | 4–6 | 1 turn | 4 | 1 | 1 turn | same room only | 4–6 safe |
-| Normal | every turn (no die) | 2 turns | 3 | 2 | 2 turns | 1 doorway | 4–6 safe |
-| Hard | 2–6 | 3 turns | 3 | 2 | 3 turns | 2 doorways | 5–6 safe |
+| Normal | every turn (no die) | 2 turns | 3 | 2 | 2 turns | 1 room, straight line | 4–6 safe |
+| Hard | 2–6 | 3 turns | 3 | 2 | 3 turns | 2 rooms, straight line | 5–6 safe |
 
 ## Balance simulation
 

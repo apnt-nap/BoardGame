@@ -28,6 +28,7 @@ func _run() -> void:
 	_test_redraw()
 	_test_normal_knight()
 	_test_easy_hard_unchanged()
+	_test_line_of_sight()
 	_test_bot_games()
 	print("%d checks, %d failed" % [checks, failures])
 	print("Rules tests passed" if failures == 0 else "Rules tests FAILED")
@@ -522,6 +523,27 @@ func _test_easy_hard_unchanged() -> void:
 			var w2: Array = k.begin_turn(g._senses())
 			if pre2 >= g.diff["move_min"]:
 				check(w2.size() == (2 if d == "hard" else 1), "%s: charge steps unchanged" % d)
+
+
+# ---------------------------------------------------------------- line of sight
+
+func _test_line_of_sight() -> void:
+	var c = Castle.new()
+	c.n = 5
+	c.doors.clear()
+	# Row 0: A1-B1-C1 open, C1-D1 closed. Column A: A1-A2 open. A2-B2 open (for a corner).
+	c.doors[Castle.key(0, 1)] = true
+	c.doors[Castle.key(1, 2)] = true
+	c.doors[Castle.key(0, 5)] = true
+	c.doors[Castle.key(5, 6)] = true
+	check(c.in_sight(0, 0, 0), "same room is always in sight")
+	check(c.in_sight(0, 1, 1), "next room through an open doorway, straight")
+	check(not c.in_sight(0, 1, 0), "sight 0: only the same room")
+	check(c.in_sight(0, 2, 2) and not c.in_sight(0, 2, 1), "2 rooms down a corridor needs sight 2")
+	check(not c.in_sight(2, 3, 2), "a closed wall blocks sight even next door")
+	check(not c.in_sight(0, 6, 2), "no sight around a corner, even with a 2-door path")
+	check(c.distance(0, 6) == 2, "(the corner room is 2 doorways away)")
+	check(c.in_sight(0, 5, 1) and c.in_sight(5, 0, 1), "vertical sight works both ways")
 
 
 # ---------------------------------------------------------------- bot smoke

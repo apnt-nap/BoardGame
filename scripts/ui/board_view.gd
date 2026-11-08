@@ -128,7 +128,6 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var c := cell()
 	var sight: int = game.diff["sight"]
-	var kdist: Array = castle.distances(game.knight.room)
 
 	# Corridors (doorways) under the rooms.
 	var w := c * 0.22
@@ -159,7 +158,7 @@ func _draw() -> void:
 			draw_texture_rect_region(tile, rect, _cover_src(tile, rect.size), shade)
 			draw_rect(Rect2(rect.position, Vector2(rect.size.x, 26)), Color(0, 0, 0, 0.6))
 		# Knight's line of sight.
-		if sight > 0 and kdist[r] >= 0 and kdist[r] <= sight:
+		if sight > 0 and r != game.knight.room and castle.in_sight(game.knight.room, r, sight):
 			draw_rect(rect, P.SIGHT)
 		if _pulse_rooms.has(r):
 			draw_rect(rect, Color(P.GOLD, 0.25 * _pulse_rooms[r]))

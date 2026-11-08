@@ -480,8 +480,8 @@ func _after_player_action() -> void:
 
 func _senses() -> Dictionary:
 	# The Knight only knows where you are if it hears you (Noise at the hunt threshold)
-	# or sees you within `sight` doorways. Nothing else about you is passed in.
-	var seen: bool = castle.distance(knight.room, player_room) <= diff["sight"]
+	# or sees you down a straight corridor of open doorways, up to `sight` rooms away.
+	var seen: bool = castle.in_sight(knight.room, player_room, diff["sight"])
 	return {
 		"noise": noise,
 		"token": token,

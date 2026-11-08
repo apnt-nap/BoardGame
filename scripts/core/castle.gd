@@ -235,6 +235,28 @@ func corrupt(count: int) -> Array:
 	return out
 
 
+## Line of sight: same room, or the same row/column within `max_rooms`, with every doorway
+## between them open (a straight corridor). Corners and closed walls block sight.
+func in_sight(from: int, to: int, max_rooms: int) -> bool:
+	if from == to:
+		return true
+	var a := pos(from)
+	var b := pos(to)
+	if a.x != b.x and a.y != b.y:
+		return false
+	var steps: int = absi(b.x - a.x) + absi(b.y - a.y)
+	if steps > max_rooms:
+		return false
+	var dir := Vector2i(signi(b.x - a.x), signi(b.y - a.y))
+	var cur := a
+	for _i in steps:
+		var nxt := cur + dir
+		if not has_door(idx(cur.x, cur.y), idx(nxt.x, nxt.y)):
+			return false
+		cur = nxt
+	return true
+
+
 func passage_exit(r: int) -> int:
 	if special_at(r) != "passage":
 		return -1
