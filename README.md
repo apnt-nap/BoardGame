@@ -107,7 +107,13 @@ threshold or while you are within its sight range. It never reads hidden game st
 On Easy and Hard a pre-rolled D6 decides move or stay. On Normal there is no die: the Knight moves every turn
 (unless stunned): 2 rooms when it hears you (Noise at the threshold, even if it also sees you), otherwise 1 room
 (Patrol, Investigate, Search, a sight-only Hunt, and following its memory after losing you). It always stops on
-entering your room. Every decision
+entering your room.
+
+**Seal signal (all difficulties).** Restoring the 1st or 2nd Seal sends a signal from that Seal's room. On its
+next normal turn the Knight heads for that room (not for you), 2 rooms per turn with no die, unless it hears or
+sees you, which still comes first and cancels the signal. A Lantern stun skips the turn but keeps the signal. If it
+reaches the Seal and you're gone, it starts searching there. A newer signal replaces an older one. The third Seal
+wins at once, with no signal. Every decision
 is logged with its reason, both on screen (F1) and in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\knight_log.txt`.
 
 | Difficulty | Moves on | Memory | Hunts at Noise | Steps when charging | Search | Sight | Hide check |

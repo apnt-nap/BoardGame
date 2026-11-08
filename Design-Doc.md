@@ -9,6 +9,7 @@
 > - **Removed:** the Library room and the Secret Passage Map treasure. Rooms are now Chapel, Armory, Bell Tower and Secret Passage.
 > - **Rune Key:** once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal).
 > - **Normal Knight: no movement die.** It moves every turn unless stunned: 2 rooms when it hears you (Noise at the threshold, even if it also sees you), 1 room otherwise (Patrol, Investigate, Search, sight-only Hunt, memory pursuit). It stops on entering your room. Easy and Hard keep the die.
+> - **Seal signal:** restoring the 1st or 2nd Seal sends a signal from its room. On its next turn the Knight heads there (2 rooms per turn, no die, all difficulties) unless it hears or sees you, which comes first and cancels the signal. Stun keeps the signal. Reaching the Seal with nobody there starts a Search. A newer signal replaces an older one. The third Seal wins at once with no signal.
 > - **Line of sight:** the Knight sees you only in a straight row or column through open doorways, up to its sight range. It cannot see around a corner or through a wall.
 > - The bot results in `docs/BALANCE.md` were measured with the v1.0 rules and have not been re-run for v1.1.
 

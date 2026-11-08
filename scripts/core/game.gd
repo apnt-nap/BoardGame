@@ -318,6 +318,9 @@ func _on_seal_restored() -> void:
 		for t in corrupted_types:
 			names.append(Config.SPECIALS[t]["name"])
 		_ev("corrupt", "Darkness spreads: the %s fall silent." % " and ".join(PackedStringArray(names)), {"types": corrupted_types})
+	# 1st/2nd Seal: a signal at the Seal's room (post-shift map). The Knight acts on it on its next turn.
+	knight.receive_signal(player_room)
+	_ev("signal", "The Seal sends a signal. The Knight is drawn to this room.", {"room": player_room})
 	knight._compute_plan()
 
 

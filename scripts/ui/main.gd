@@ -638,7 +638,7 @@ func _handle(e: Dictionary) -> void:
 			sfx.play("bad")
 			_log(e["text"], Color("b07cd0"))
 			await _wait(0.5)
-		"bell":
+		"bell", "signal":
 			sfx.play("bell")
 			board.pulse(e["room"], 1.5)
 			_log(e["text"], P.GOLD)

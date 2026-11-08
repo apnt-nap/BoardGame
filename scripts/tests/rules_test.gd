@@ -29,6 +29,7 @@ func _run() -> void:
 	_test_normal_knight()
 	_test_easy_hard_unchanged()
 	_test_line_of_sight()
+	_test_seal_signal()
 	_test_bot_games()
 	print("%d checks, %d failed" % [checks, failures])
 	print("Rules tests passed" if failures == 0 else "Rules tests FAILED")
@@ -544,6 +545,143 @@ func _test_line_of_sight() -> void:
 	check(not c.in_sight(0, 6, 2), "no sight around a corner, even with a 2-door path")
 	check(c.distance(0, 6) == 2, "(the corner room is 2 doorways away)")
 	check(c.in_sight(0, 5, 1) and c.in_sight(5, 0, 1), "vertical sight works both ways")
+
+
+# ---------------------------------------------------------------- seal signal
+
+## A room at least `d` doorways from `from`, or -1.
+func _room_at_least(c, from: int, d: int) -> int:
+	var dist: Array = c.distances(from)
+	for r in c.room_count():
+		if dist[r] >= d:
+			return r
+	return -1
+
+
+func _test_seal_signal() -> void:
+	for d in Config.DIFFICULTY_ORDER:
+		var g = Game.new()
+		g.new_game("ranger", d, 501, false)
+		var k = g.knight
+		check(k.signal_room == -1, "%s: no signal before any Seal" % d)
+		# First Seal: signal at that room, Knight pursues 2 rooms with no die.
+		g.player_room = g.castle.seals[0]
+		g.knight.room = _room_at_least(g.castle, g.player_room, 5)
+		g.knight.state = "PATROL"
+		g.knight._compute_plan()
+		g.noise = 0
+		g.token = -1
+		g.blessed_turns = 2
+		g.shards = 2
+		_set_hand(g, ["activate", "search"])
+		var pre_roll: int = k.next_roll
+		g.take_events()
+		check(g.play_card(0, "normal"), "%s: first Activate plays" % d)
+		var signalled := false
+		var kpath: Array = []
+		var kfrom := -1
+		for e in g.take_events():
+			if e["type"] == "signal":
+				signalled = e["room"] == g.castle.seals[0]
+			if e["type"] == "knight":
+				kpath = e["path"]
+				kfrom = e["from"]
+		check(signalled, "%s: first Seal sends a signal at its room" % d)
+		var dpost: int = g.castle.distance(kfrom, g.castle.seals[0])
+		check(kpath.size() == mini(2, dpost), "%s: signal pursuit moves up to 2 rooms (post-shift map)" % d)
+		check(k.last_roll == 0 and k.next_roll == pre_roll, "%s: signal pursuit rolls no die" % d)
+		if dpost > 2:
+			check(k.signal_room == g.castle.seals[0] and k.following_signal(), "%s: keeps following until it arrives" % d)
+			check(k.state == "INVESTIGATE" and k.target == g.castle.seals[0], "%s: target is the Seal room, not the player" % d)
+
+	# Second Seal also signals; a newer signal replaces the older one.
+	var g2 = Game.new()
+	g2.new_game("ranger", "normal", 502, false)
+	g2.restored[0] = true
+	g2.player_room = g2.castle.seals[1]
+	g2.knight.room = _room_at_least(g2.castle, g2.player_room, 4)
+	g2.noise = 0
+	g2.token = -1
+	g2.knight.receive_signal(g2.castle.seals[0])
+	g2.shards = 2
+	g2.blessed_turns = 2
+	g2.knight.skip_turns = 1
+	_set_hand(g2, ["activate", "search"])
+	g2.take_events()
+	g2.play_card(0, "normal")
+	var sig2 := false
+	for e in g2.take_events():
+		if e["type"] == "signal":
+			sig2 = true
+	check(sig2, "second Seal sends a signal")
+	check(g2.knight.signal_room == g2.castle.seals[1], "newer signal replaces the older one")
+	# Stun: turn skipped, signal kept.
+	check(g2.knight.stunned_now and g2.knight.signal_room == g2.castle.seals[1], "stun skips the turn but keeps the signal")
+
+	# Detection priority: hearing the player clears the signal and hunts.
+	var g3 = Game.new()
+	g3.new_game("ranger", "normal", 503, false)
+	_place(g3, 4)
+	var sroom: int = _room_at_least(g3.castle, g3.knight.room, 3)
+	g3.knight.receive_signal(sroom)
+	g3.noise = 3
+	var w: Array = g3.knight.begin_turn(g3._senses())
+	check(g3.knight.state == "HUNT" and g3.knight.target == g3.player_room, "hearing beats the signal")
+	check(g3.knight.signal_room == -1, "Hunt clears the signal")
+	check(w.size() == 2, "Normal hearing hunt still 2 rooms")
+
+	# Arrival with nobody there: clear the signal, start Search at the Seal.
+	var g4 = Game.new()
+	g4.new_game("ranger", "normal", 504, false)
+	_place(g4, 4)
+	var nb: int = g4.castle.neighbors(g4.knight.room)[0]
+	if nb == g4.player_room:
+		nb = g4.castle.neighbors(g4.knight.room)[-1]
+	g4.knight.receive_signal(nb)
+	var w4: Array = g4.knight.begin_turn(g4._senses())
+	check(w4 == [nb], "walks onto the signalled room")
+	for r in w4:
+		g4.knight.step_to(r)
+	g4.knight.end_turn(false)
+	check(g4.knight.signal_room == -1 and g4.knight.state == "SEARCH" and g4.knight.search_center == nb, "arrival clears the signal and starts Search there")
+
+	# Encounter timing: the player stays on the Seal, the Knight arrives and stops there.
+	var g5 = Game.new()
+	g5.new_game("ranger", "normal", 505, false)
+	var pair: Array = []
+	for a in g5.castle.room_count():
+		for b in g5.castle.room_count():
+			if g5.castle.distance(a, b) == 2 and not g5.castle.in_sight(b, a, 1):
+				pair = [a, b]
+				break
+		if not pair.is_empty():
+			break
+	g5.player_room = pair[0]
+	g5.knight.room = pair[1]
+	g5.noise = 0
+	g5.token = -1
+	g5.blessed_turns = 2
+	g5.knight.receive_signal(pair[0])
+	g5._world_phase()
+	check(g5.knight.room == pair[0] and g5.phase == "encounter", "signal pursuit reaches the player and the encounter starts at the normal step")
+
+	# Third Seal: immediate win, no signal, no Spirit or Knight action.
+	var g6 = Game.new()
+	g6.new_game("ranger", "normal", 506, false)
+	g6.restored[0] = true
+	g6.restored[1] = true
+	g6.player_room = g6.castle.seals[2]
+	g6.shards = 2
+	var kr: int = g6.knight.room
+	var sr: int = g6.spirit_room
+	_set_hand(g6, ["activate", "search"])
+	g6.take_events()
+	g6.play_card(0, "normal")
+	var any_signal := false
+	for e in g6.take_events():
+		if e["type"] in ["signal", "knight", "spirit_move"]:
+			any_signal = true
+	check(g6.phase == "won" and not any_signal and g6.knight.room == kr and g6.spirit_room == sr, "third Seal wins with no signal and no world actions")
 
 
 # ---------------------------------------------------------------- bot smoke
