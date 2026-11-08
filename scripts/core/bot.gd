@@ -78,15 +78,15 @@ func _free_actions(g) -> void:
 			if (kd <= 2 and g.castle.distance(exit, g.knight.room) > kd) or \
 					(goal >= 0 and g.castle.distance(exit, goal) + 1 < g.castle.distance(g.player_room, goal)):
 				g.do_room_action()
-	# Focus: redraw a useless hand.
-	if g.can_focus() and not _hand_useful(g):
-		g.focus_redraw()
+	# The one free redraw per run: swap a useless hand.
+	if g.can_redraw() and not _hand_useful(g):
+		g.redraw_hand()
 
 
 func _hand_useful(g) -> bool:
 	for i in g.hand.size():
 		var c: String = g.hand[i]
-		if c == "activate" and g.can_play(i, "normal"):
+		if c == "activate" and (g.can_play(i, "normal") or g.can_play(i, "rune_key")):
 			return true
 		if c == "search" and g.can_play(i, "normal") and g.shards < _shards_needed(g):
 			return true
@@ -94,7 +94,12 @@ func _hand_useful(g) -> bool:
 
 
 func _shards_needed(g) -> int:
-	return (3 - g.seals_restored()) * Config.SHARDS_PER_SEAL
+	return (3 - g.seals_restored()) * Config.SHARDS_PER_SEAL - (1 if g.rune_key_ready else 0)
+
+
+## Enough Shards to restore one Seal right now (1 with an unused Rune Key).
+func _can_afford_seal(g) -> bool:
+	return g.shards >= Config.SHARDS_PER_SEAL or g.can_use_rune_key()
 
 
 ## Where the bot wants to go: nearest unrestored Seal if it has shards, else nearest searchable room.
@@ -102,7 +107,7 @@ func _goal(g) -> int:
 	var dist: Array = g.castle.distances(g.player_room)
 	var best := -1
 	var best_d := 999
-	if g.shards >= Config.SHARDS_PER_SEAL:
+	if _can_afford_seal(g):
 		for i in 3:
 			var s: int = g.castle.seals[i]
 			if g.restored[i]:
@@ -165,10 +170,14 @@ func _choose_card(g) -> Dictionary:
 	var a := _find(g, "activate")
 	if a >= 0 and kd >= 1:
 		return {"i": a, "mode": "normal", "target": -1}
+	# With 1 Shard, the Rune Key is the only way to activate.
+	for i in g.hand.size():
+		if g.hand[i] == "activate" and g.can_play(i, "rune_key") and kd >= 1:
+			return {"i": i, "mode": "rune_key", "target": -1}
 	# 3. Need shards and this room is searchable.
 	var s := _find(g, "search")
 	if s >= 0 and g.shards < _shards_needed(g) and (kd >= 2 or g.noise <= hunt_at - 2) and \
-			(g.shards < Config.SHARDS_PER_SEAL or g.unrestored_seal_here() < 0):
+			(not _can_afford_seal(g) or g.unrestored_seal_here() < 0):
 		return {"i": s, "mode": "normal", "target": -1}
 	# 5. Move toward the goal, away from the Knight when it is close.
 	# 4. Already where it wants to be but holding the wrong cards: wait quietly.

@@ -48,17 +48,18 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 
 | Card | Copies | Effect |
 |---|---|---|
-| Explore | 2 | Move 1 room. Silent. |
-| Dash | 2 | Move up to 2 rooms. Noise +1, the token goes to where you stop. |
-| Search | 6 | D6: 1 fail (+1 Noise) · 2–3 one Shard · 4–5 two Shards · 5–6 also a Minor Treasure. Each room can be searched once. |
-| Activate | 4 | On an unrestored Seal with 2+ Shards. D6: 1–2 fail (+1 Noise) · 3–5 restored · 6 restored and Noise −1. |
-| Hide | 2 | Noise −1. |
+| Explore | 2 | Move up to 2 rooms. Silent. |
+| Dash | 2 | Move up to 3 rooms. Noise +1 in total, the token goes to where you stop. |
+| Search | 6 | Not on a Seal. D6: 1 fail (+1 Noise, token here) · 2–4 one Shard · 5–6 one Shard and a Minor Treasure. Each room can be searched successfully once. |
+| Activate | 4 | On an unrestored Seal: spend 2 Shards and the Seal is restored. No roll, it always works. |
+| Hide | 2 | Stay. Noise −2 (needs Noise above 0). |
 
 - **Sneak:** any card can be played face-down to *move 1 room silently* or to *keep still* (Noise −1).
   You never have a dead turn.
-- **Misses build up:** a failed Search gives +1 to your next Search, and a failed Activate gives +1 to your next try on that Seal.
-- **Focus:** start with 1, gain 1 per Seal. Spend it to redraw your hand.
-- **Rooms:** Chapel (heal 1, once), Library (read the Knight's next move, once per visit), Bell Tower
+- **Misses build up:** a failed Search gives +1 to your next Search (used up on that roll, never more than +1; the result is capped at 6).
+- **Free redraw:** once per run, before you play your card, discard both cards and draw 2 new ones. It costs no turn.
+- **Noise** goes from 0 to 5.
+- **Rooms:** Chapel (heal 1, once), Bell Tower
   (move the Noise token to the tower, once), Armory (a free treasure, once), Secret Passages (two
   linked corners, silent, and the Knight doesn't know about them). Using a room is free, once per turn.
 - **The Keep fights back:** every restored Seal closes one doorway and opens another. The second Seal
@@ -82,7 +83,7 @@ mind** (state, memory, pre-rolled die, planned route, recent decisions) · `M` m
 | Ranger | Lantern: the Knight skips its next turn; in an encounter, also escape silently | Start |
 | Alchemist | Healing Potion: +1 Health | Start |
 | Mage | Silence Scroll: Noise −2; in an encounter, also escape | Win once |
-| Knight | Rune Key: your first Activate roll of 2 counts as 3 | Win on Normal |
+| Knight | Rune Key: once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal) | Win on Normal |
 | Thief | Smoke Vial: escape an encounter with no damage and no noise | Win with 3 different heroes |
 | Priest | Blessing: the Spirit can't shriek at you for 5 turns | Win on Hard |
 
@@ -103,7 +104,7 @@ threshold or while you are within its sight range. It never reads hidden game st
 | HUNT | Noise ≥ hunt threshold (charges, Hard = 2 rooms/move) or it sees you (stalks, 1 room) | Shortest path to your room |
 | SEARCH | It reaches the noise and you're gone, it loses the trail, or you out-hide it | Checks the rooms around that spot for N turns, then patrols |
 
-Each turn a pre-rolled D6 decides move or stay. The Library shows that roll honestly. Every decision
+Each turn a pre-rolled D6 decides move or stay. Every decision
 is logged with its reason, both on screen (F1) and in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\knight_log.txt`.
 
 | Difficulty | Moves on | Memory | Hunts at Noise | Steps when charging | Search | Sight | Hide check |
@@ -122,6 +123,12 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts
 
 The CSV columns are hero, difficulty, games, win_rate, avg_turns, avg_encounters, avg_damage,
 loss_health and loss_time. Results and tuning notes are in [`docs/BALANCE.md`](docs/BALANCE.md).
+
+Rules tests (movement, Search, automatic Activate, Rune Key, redraw, removed content, castle generation, 60 bot games):
+
+```
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts/tests/rules_test.gd
+```
 
 UI smoke test (plays whole games through the real interface and saves screenshots to `build/shots/`):
 

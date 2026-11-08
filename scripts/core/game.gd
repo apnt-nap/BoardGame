@@ -20,15 +20,13 @@ var token := -1               # Last Known Noise token room (-1 = off the map)
 var token_serial := 0         # bumps every time the token is placed
 var shards := 0
 var restored := [false, false, false]
-var focus: int = Config.START_FOCUS
+var redraw_ready := true      # one free redraw per run (replaces Focus); a new run = a new Game
 var treasures: Array = []
 var hero_item_ready := true
-var rune_key_ready := false
+var rune_key_ready := false   # Knight hero: once per run, an Activate may cost 1 Shard
 var search_bonus := 0
-var activate_bonus := [0, 0, 0]
 var searched: Dictionary = {}
 var used_once: Dictionary = {}
-var library_used_here := false
 var room_action_used := false
 var blessed_turns := 0
 var spirit_room := 0
@@ -188,14 +186,24 @@ func move_options(card: String, mode: String) -> Array:
 	if mode == "sneak_move":
 		return castle.neighbors(player_room)
 	if card == "explore":
-		return rooms_within(player_room, 2) if "passage_map" in treasures else castle.neighbors(player_room)
-	if card == "dash":
 		return rooms_within(player_room, 2)
+	if card == "dash":
+		return rooms_within(player_room, 3)
 	return []
 
 
 func needs_target(card: String, mode: String) -> bool:
 	return mode == "sneak_move" or (mode == "normal" and (card == "explore" or card == "dash"))
+
+
+## Shards an Activate costs: 2, or 1 when spending the Rune Key.
+func activate_cost(use_key: bool) -> int:
+	return Config.SHARDS_PER_SEAL - 1 if use_key else Config.SHARDS_PER_SEAL
+
+
+## The Rune Key can pay for this Activate: still unused, and you hold at least 1 Shard.
+func can_use_rune_key() -> bool:
+	return rune_key_ready and shards >= activate_cost(true)
 
 
 func can_play(i: int, mode: String) -> bool:
@@ -205,13 +213,16 @@ func can_play(i: int, mode: String) -> bool:
 		return true
 	if mode == "sneak_quiet":
 		return true  # also works as "wait silently" at Noise 0
+	if mode == "rune_key":
+		# Activate paying 1 Shard with the Rune Key (optional with 2+ Shards, the only way with 1).
+		return hand[i] == "activate" and unrestored_seal_here() >= 0 and can_use_rune_key()
 	match hand[i]:
 		"explore", "dash":
 			return true
 		"search":
 			return is_searchable(player_room)
 		"activate":
-			return unrestored_seal_here() >= 0 and shards >= Config.SHARDS_PER_SEAL
+			return unrestored_seal_here() >= 0 and shards >= activate_cost(false)
 		"hide":
 			return noise > 0
 	return false
@@ -225,7 +236,10 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 		return false
 	discard.append_array(hand)
 	hand.clear()
-	if mode == "sneak_move":
+	if mode == "rune_key":
+		_ev("card", "Activate (Rune Key).", {"card": card})
+		_activate(true)
+	elif mode == "sneak_move":
 		_ev("card", "Sneak: you creep silently to %s." % room_name(target), {"card": card, "sneak": true})
 		_move_player(target)
 	elif mode == "sneak_quiet":
@@ -235,9 +249,6 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 		_ev("card", "%s." % Config.CARDS[card]["name"], {"card": card})
 		match card:
 			"explore":
-				if castle.distance(player_room, target) > 1:
-					treasures.erase("passage_map")
-					_ev("treasure", "The Secret Passage Map shows you a shortcut.")
 				_move_player(target)
 			"dash":
 				_move_player(target)
@@ -245,9 +256,9 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 			"search":
 				_search()
 			"activate":
-				_activate()
+				_activate(false)
 			"hide":
-				reduce_noise(1)
+				reduce_noise(2)
 	_after_player_action()
 	return true
 
@@ -255,7 +266,6 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 func _move_player(r: int) -> void:
 	var from := player_room
 	player_room = r
-	library_used_here = false
 	_ev("move", "", {"from": from, "to": r})
 
 
@@ -270,36 +280,24 @@ func _search() -> void:
 		add_noise(1, player_room)
 		return
 	searched[player_room] = true
-	var gain := 1 if roll <= 3 else 2
-	shards += gain
-	stats["shards"] += gain
-	_ev("dice", "Search roll %d: %d Rune Shard%s." % [roll, gain, "s" if gain > 1 else ""], {"roll": natural, "ok": true})
-	_ev("shard", "+%d Shard" % gain, {"amount": gain})
+	# 2-4: 1 Shard. 5-6: 1 Shard and a treasure.
+	shards += 1
+	stats["shards"] += 1
+	_ev("dice", "Search roll %d: 1 Rune Shard%s." % [roll, " and a treasure" if roll >= 5 else ""], {"roll": natural, "ok": true})
+	_ev("shard", "+1 Shard", {"amount": 1})
 	if roll >= 5:
 		_gain_treasure()
 
 
-func _activate() -> void:
+## Activation always succeeds (no roll): spend the Shards and restore the Seal.
+func _activate(use_key: bool) -> void:
 	var si := unrestored_seal_here()
-	var natural := d6()
-	var roll: int = natural + activate_bonus[si]
-	if natural == 2 and rune_key_ready and roll < 3:
-		roll = 3
+	shards -= activate_cost(use_key)
+	if use_key:
 		rune_key_ready = false
-		_ev("hero", "The Rune Key turns: the 2 counts as a 3.")
-	if roll <= 2:
-		activate_bonus[si] = 1
-		_ev("dice", "Activate roll %d: the Seal sparks and screams! (+1 on your next try here)" % roll, {"roll": natural, "ok": false})
-		add_noise(1, player_room)
-		return
-	activate_bonus[si] = 0
-	shards -= Config.SHARDS_PER_SEAL
+		_ev("hero", "The Rune Key turns: the Seal takes only 1 Shard.")
 	restored[si] = true
-	focus += 1
-	_ev("dice", "Activate roll %d: Seal %s is restored!" % [mini(roll, 6), char(65 + si)], {"roll": natural, "ok": true})
-	_ev("seal", "Seal %s restored. +1 Focus." % char(65 + si), {"seal": si})
-	if roll >= 6 and noise > 0:
-		reduce_noise(1)
+	_ev("seal", "Seal %s restored." % char(65 + si), {"seal": si})
 	_on_seal_restored()
 
 
@@ -342,8 +340,6 @@ func room_action() -> String:
 	match t:
 		"chapel":
 			return t if not used_once.has(t) and health < Config.MAX_HEALTH else ""
-		"library":
-			return t if not library_used_here else ""
 		"bell_tower", "armory":
 			return t if not used_once.has(t) else ""
 		"passage":
@@ -361,13 +357,6 @@ func do_room_action() -> bool:
 			used_once[t] = true
 			health += 1
 			_ev("heal", "The Chapel's candles warm you. +1 Health.")
-		"library":
-			library_used_here = true
-			var step: int = knight.next_step()
-			var moves: bool = knight.next_roll >= diff["move_min"] and step != knight.room
-			var text := "The Knight's journal: it is %s and its next die shows %d. " % [knight.state, knight.next_roll]
-			text += ("If nothing changes it moves to %s." % room_name(step)) if moves else "If nothing changes it stays put."
-			_ev("library", text, {"room": step if moves else knight.room})
 		"bell_tower":
 			used_once[t] = true
 			token = player_room
@@ -464,18 +453,19 @@ func use_hero_item() -> bool:
 	return true
 
 
-func can_focus() -> bool:
-	return phase == "player" and focus > 0
+## One optional free redraw per run, before you play the turn's card. Costs no turn.
+func can_redraw() -> bool:
+	return phase == "player" and redraw_ready and hand.size() == 2
 
 
-func focus_redraw() -> bool:
-	if not can_focus():
+func redraw_hand() -> bool:
+	if not can_redraw():
 		return false
-	focus -= 1
+	redraw_ready = false
 	discard.append_array(hand)
 	hand.clear()
 	_draw_hand()
-	_ev("focus", "You steady your nerves and redraw.")
+	_ev("redraw", "You steady your nerves and redraw. Your one redraw this run is used.")
 	return true
 
 

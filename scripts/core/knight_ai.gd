@@ -27,7 +27,7 @@ var search_left := 0
 var search_pick := -1
 var search_checked: Dictionary = {}
 var skip_turns := 0
-var next_roll := 1          # pre-rolled so the Library can reveal it honestly
+var next_roll := 1          # pre-rolled at the end of its previous turn (kept so the AI and RNG order are unchanged)
 var last_roll := 0          # the die it used this turn (0 = it did not roll)
 var plan: Array = []        # planned path for intent cues and the debug overlay
 var reason := ""

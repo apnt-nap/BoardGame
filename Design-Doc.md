@@ -1,5 +1,15 @@
 # Curse of Blackthorn Keep: Digital Redesign
 
+> **Playtest rules (build v1.1, 8 Nov 2026).** These override anything below that disagrees.
+>
+> - **Cards** (deck unchanged: 2 Explore, 2 Dash, 6 Search, 4 Activate, 2 Hide). Explore: move silently up to 2 rooms. Dash: move up to 3 rooms, Noise +1 in total, token at the destination. Hide card: stay, Noise −2 (the encounter HIDE is unchanged). Sneak (any card): move 1 room silently, or stay and lower Noise by 1 (allowed at Noise 0). Noise stays between 0 and 5.
+> - **Search** (not on a Seal, each room once): D6 1 fail, Noise +1 and token here · 2–4 one Shard · 5–6 one Shard and a treasure. A fail gives +1 to the next Search only (no stacking, capped at 6).
+> - **Activate:** on an unrestored Seal with 2 Shards, it always succeeds. No roll, no miss bonus, no Noise change, no Focus. The third Seal still wins at once.
+> - **Focus is gone.** Instead you get one free redraw per run, before playing your card.
+> - **Removed:** the Library room and the Secret Passage Map treasure. Rooms are now Chapel, Armory, Bell Tower and Secret Passage.
+> - **Rune Key:** once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal).
+> - The bot results in `docs/BALANCE.md` were measured with the v1.0 rules and have not been re-run for v1.1.
+
 Nov 7, 2026 · @Asia · updated after bot tuning for build v1.0 (see "Tuning changes" at the end)
 
 ## Goal
@@ -19,12 +29,11 @@ What changes from the paper version:
 
 The castle is a 5×5 grid of 25 rooms, generated fresh every run. Rooms connect only through doorways, and not every wall has one, so routes matter. The generator always keeps every room reachable and puts the three Seals at least 3 rooms apart.
 
-Each run places 5 special rooms at random:
+Each run places 4 special room types at random (5 rooms, because the Secret Passage has two linked ends):
 
 | Room | What you can do there | Limit |
 | --- | --- | --- |
 | Chapel | Heal 1 Health | Once per run |
-| Library | See where the Knight will move next turn | Once per visit |
 | Bell Tower | Ring the bell: the Noise token goes to the Bell Tower, not to you, luring the Knight away | Once per run |
 | Secret Passage | Step straight to the paired passage room in another corner, with no Noise | Any time |
 | Armory | Take one guaranteed Minor Treasure | Once per run |
@@ -40,8 +49,8 @@ The turn limit rises from 24 to **36** to fit the bigger map. The bot simulation
 The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight acts. The 16-card deck is now 2 Explore, 2 Dash, 6 Search, 4 Activate and 2 Hide. Sneak already moves you 1 room silently, so three Explore copies became Search and Activate. Three fixes stop a bad roll or a bad hand from wasting a turn.
 
 1. **Any card can be played as a Sneak.** Instead of its printed action, play any card face down to move 1 room with no Noise, or to keep still and lower Noise by 1 (this also works at Noise 0, as a silent wait). A hand of two unusable Activates is never a dead turn again.
-2. **Misses build up.** A failed Search gives +1 to your next Search roll, and a failed Activate gives +1 to your next Activate on that Seal. A run of bad rolls gets easier, not worse.
-3. **One Focus per Seal.** You start with 1 Focus and gain 1 each time you restore a Seal. Spend it to discard your hand and draw 2 new cards.
+2. **Misses build up.** A failed Search gives +1 to your next Search roll (used up on that roll, never more than +1, result capped at 6). Activate has no roll any more (see Playtest rules).
+3. **One free redraw per run.** Before playing your card, discard both cards and draw 2 new ones. It costs no turn, and you get it once per run. (This replaced Focus.)
 
 **Items are less luck-based.** A Search finds a Minor Treasure on a 5 or 6, not only a 6. The Armory always holds one, and you can carry 2 instead of 1. Two new treasures fit the bigger castle:
 
@@ -50,7 +59,7 @@ The core stays the same: draw 2 Action Cards, play 1, discard 1, then the Knight
 | Smoke Vial | In an encounter, escape to an adjacent room with no damage and no Noise |
 | Spirit Bell | Push the Wandering Spirit up to 2 rooms away from you |
 
-The four existing treasures (Ward Charm, Old Shield, Emergency Ration, Secret Passage Map) stay as they are.
+Three existing treasures (Ward Charm, Old Shield, Emergency Ration) stay as they are. The Secret Passage Map was removed in the playtest rules.
 
 ## The Cursed Knight and the Wandering Spirit
 
@@ -95,7 +104,7 @@ Every run has a new castle, and wins unlock new heroes and the next difficulty. 
 | Ranger | Enchanted Lantern: the Knight skips its next turn | Start |
 | Alchemist | Healing Potion: restore 1 Health | Start |
 | Mage | Silence Scroll: Noise −2 | Win 1 game |
-| Knight | Rune Key: an Activate roll of 2 counts as 3 | Win on Normal |
+| Knight | Rune Key: once per run, restore a Seal with 1 Shard instead of 2 | Win on Normal |
 | Thief (new) | Smoke Vial: escape an encounter with no damage and no Noise | Win with 3 different heroes |
 | Priest (new) | Blessing: the Spirit cannot shriek at you for 5 turns | Win on Hard |
 

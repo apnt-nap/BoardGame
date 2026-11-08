@@ -189,7 +189,7 @@ func _place_specials() -> void:
 	for r in room_count():
 		if not (r in seals) and not specials.has(r):
 			free.append(r)
-	for t in ["chapel", "library", "bell_tower", "armory"]:
+	for t in ["chapel", "bell_tower", "armory"]:
 		var r: int = free[rng.randi_range(0, free.size() - 1)]
 		free.erase(r)
 		specials[r] = t

@@ -33,7 +33,6 @@ const STATE_ICON := {"PATROL": "~", "INVESTIGATE": "?", "HUNT": "!", "SEARCH": "
 
 const SPECIAL_COLORS := {
 	"chapel": Color("f2e4b0"),
-	"library": Color("b08a5a"),
 	"bell_tower": Color("d9a441"),
 	"armory": Color("b9c2cc"),
 	"passage": Color("7f6aa8"),
@@ -45,7 +44,7 @@ const ICON_TEXTURES := {}
 ## Painted art (names of files in res://art/, cut from "Game Design.pdf"). Delete or rename a file
 ## to fall back to the vector look for that element.
 const ROOM_ART := ["room_dungeon", "room_throne", "room_hall", "room_forge"]
-const SPECIAL_ROOM_ART := {"armory": "room_armory", "library": "room_library"}
+const SPECIAL_ROOM_ART := {"armory": "room_armory"}
 const SEAL_ROOM_ART := ["room_seal_red", "room_seal_blue", "room_seal_green"]
 const SEAL_TOKEN_ART := ["seal_a", "seal_b", "seal_c"]
 const CARD_ART := {"explore": "card_explore", "dash": "card_dash", "search": "card_search", "activate": "card_activate", "hide": "card_hide"}

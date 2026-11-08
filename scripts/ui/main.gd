@@ -246,10 +246,10 @@ func _build_menu() -> void:
 
 func _howto_text() -> String:
 	return ("[b][color=#d9a441]Goal[/color][/b]  Restore Seals A, B and C (2 Rune Shards each) before your Health hits 0 or Turn %d ends.\n" % Config.TURN_LIMIT) + \
-		"[b][color=#d9a441]Each turn[/color][/b]  You hold 2 cards: play 1, the other is discarded. [b]Search[/b] rooms for Shards, [b]Activate[/b] a Seal with 2 Shards. Any card can be played face-down as a [b]Sneak[/b]: move 1 room silently, or keep still (Noise -1).\n" + \
-		"[b][color=#d9a441]Noise[/color][/b]  Dash, failed rolls and running make Noise and drop the orange token where it happened. The Knight walks to the token. At high Noise it hears exactly where you are.\n" + \
+		"[b][color=#d9a441]Each turn[/color][/b]  You hold 2 cards: play 1, the other is discarded. [b]Search[/b] rooms for Shards, [b]Activate[/b] a Seal with 2 Shards (it always works). Any card can be played face-down as a [b]Sneak[/b]: move 1 room silently, or keep still (Noise -1). Once per run you may redraw your hand for free.\n" + \
+		"[b][color=#d9a441]Noise[/color][/b]  Dash, failed Searches and running make Noise and drop the orange token where it happened. The Knight walks to the token. At high Noise it hears exactly where you are.\n" + \
 		"[b][color=#d9a441]The Knight[/color][/b]  Its icon shows its mind: [color=#8a8f9e]~ Patrol[/color], [color=#e0b040]? Investigate[/color], [color=#e5383b]! Hunt[/color], [color=#c77dff]?! Search[/color]. The arrow is its next step. Red-tinted rooms are in its line of sight.\n" + \
-		"[b][color=#d9a441]Rooms[/color][/b]  Chapel heals, Library reads the Knight's next move, Bell Tower lures it away, Armory gives a treasure, Secret Passages link two corners. Restoring a Seal shifts the Keep; the second Seal corrupts two special rooms.\n" + \
+		"[b][color=#d9a441]Rooms[/color][/b]  Chapel heals, Bell Tower lures it away, Armory gives a treasure, Secret Passages link two corners. Restoring a Seal shifts the Keep; the second Seal corrupts two special rooms.\n" + \
 		"[b][color=#d9a441]Keys[/color][/b]  1 / 2 play a card, Esc cancels, F1 shows the Knight's mind (debug), M mutes."
 
 
@@ -318,8 +318,8 @@ func _build_game() -> void:
 	status.add_child(_art_rect("tok_shards", Vector2(30, 30)))
 	ui["shards"] = _label("", 20, P.SPIRIT)
 	status.add_child(_titled("Shards", ui["shards"]))
-	ui["focus"] = _label("", 20, P.GOLD)
-	status.add_child(_titled("Focus", ui["focus"]))
+	ui["redraw"] = _label("", 20, P.GOLD)
+	status.add_child(_titled("Redraw", ui["redraw"]))
 	ui["seals"] = _hbox(6)
 	for i in 3:
 		var l := _label(char(65 + i), 20, P.SEAL_COLORS[i])
@@ -393,12 +393,16 @@ func _build_game() -> void:
 		var squiet := _button("Sneak: still", func(): _on_card(idx, "sneak_quiet"))
 		squiet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		sneak_row.add_child(squiet)
-		ui["cards"].append({"panel": card, "art": art, "title": title, "text": text, "play": play, "move": smove, "quiet": squiet})
+		# Knight hero only: Activate paying 1 Shard with the Rune Key.
+		var keyb := _button("Play with Rune Key (1 Shard)", func(): _on_card(idx, "rune_key"))
+		keyb.visible = false
+		cv.add_child(keyb)
+		ui["cards"].append({"panel": card, "art": art, "title": title, "text": text, "play": play, "key": keyb, "move": smove, "quiet": squiet})
 
 	var frow := _hbox(10)
 	side.add_child(frow)
-	ui["focus_btn"] = _button("Spend Focus: redraw", _on_focus, 220)
-	frow.add_child(ui["focus_btn"])
+	ui["redraw_btn"] = _button("Free redraw (once per run)", _on_redraw, 220)
+	frow.add_child(ui["redraw_btn"])
 	ui["hint"] = _label("", 15, P.GOLD, true)
 	ui["hint"].size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	frow.add_child(ui["hint"])
@@ -493,7 +497,6 @@ func _start_game() -> void:
 	board.game = game
 	board.room_names = names
 	board.targets = []
-	board.reveal_path = []
 	board.place("player", game.player_room, true)
 	board.place("knight", game.knight.room, true)
 	board.place("spirit", game.spirit_room, true)
@@ -560,7 +563,6 @@ func _handle(e: Dictionary) -> void:
 		"spirit_move":
 			board.place("spirit", e["to"])
 		"knight":
-			board.reveal_path = []
 			if e["text"] != "":
 				knight_log.append(e["text"])
 				_log("Knight: " + e["text"].substr(e["text"].find("]") + 2), P.STATE_COLORS.get(e["state"], P.TEXT_DIM))
@@ -636,10 +638,6 @@ func _handle(e: Dictionary) -> void:
 			sfx.play("bad")
 			_log(e["text"], Color("b07cd0"))
 			await _wait(0.5)
-		"library":
-			sfx.play("good")
-			board.reveal_path = game.knight.plan.duplicate()
-			_log(e["text"], P.SPIRIT)
 		"bell":
 			sfx.play("bell")
 			board.pulse(e["room"], 1.5)
@@ -648,7 +646,7 @@ func _handle(e: Dictionary) -> void:
 		"shard":
 			sfx.play("good")
 			_float_text(game.player_room, "+%d SHARD" % e["amount"], P.SPIRIT)
-		"treasure", "armory", "hero", "escape", "passage", "focus", "spirit":
+		"treasure", "armory", "hero", "escape", "passage", "redraw", "spirit":
 			sfx.play("good" if t != "spirit" else "click")
 			_log(e["text"], P.GOLD)
 		"won":
@@ -792,8 +790,8 @@ func _on_treasure(i: int) -> void:
 		_after_action()
 
 
-func _on_focus() -> void:
-	if _can_act() and game.focus_redraw():
+func _on_redraw() -> void:
+	if _can_act() and game.redraw_hand():
 		pending = {}
 		board.targets = []
 		_after_action()
@@ -839,7 +837,7 @@ func _refresh() -> void:
 	_set_pips(ui["health"], game.health)
 	_set_pips(ui["noise"], game.noise, game.diff["hunt_at"])
 	ui["shards"].text = str(game.shards)
-	ui["focus"].text = str(game.focus)
+	ui["redraw"].text = "Ready" if game.redraw_ready else "Used"
 	for i in 3:
 		var l: Label = ui["seals"].get_child(i)
 		l.text = char(65 + i) + ("*" if game.restored[i] else "")
@@ -865,7 +863,7 @@ func _refresh() -> void:
 	ui["room_name"].text = "%s  (%s)" % [rname, game.room_name(here)]
 	var rt := ""
 	if si >= 0:
-		rt = "Restored." if game.restored[si] else "Activate here with 2 Shards. Failed tries here: next roll +%d." % game.activate_bonus[si]
+		rt = "Restored." if game.restored[si] else ("Activate here with 2 Shards (1 with the Rune Key)." if game.rune_key_ready else "Activate here with 2 Shards.")
 	elif game.castle.corrupted.has(here):
 		rt = "Corrupted: its power is gone."
 	elif sp != "":
@@ -876,7 +874,7 @@ func _refresh() -> void:
 		rt += "  Next Search +1."
 	ui["room_text"].text = rt
 	var ra: String = game.room_action()
-	ui["room_btn"].text = {"chapel": "Pray (+1 Health)", "library": "Read journal", "bell_tower": "Ring the bell", "armory": "Search rack", "passage": "Take passage"}.get(ra, "Use room")
+	ui["room_btn"].text = {"chapel": "Pray (+1 Health)","bell_tower": "Ring the bell", "armory": "Search rack", "passage": "Take passage"}.get(ra, "Use room")
 	ui["room_btn"].disabled = not act or ra == ""
 
 	var hi: Dictionary = Config.HEROES[game.hero]
@@ -907,6 +905,8 @@ func _refresh() -> void:
 			cui["art"].texture = Art.tex(P.CARD_ART.get(c, ""))
 			cui["text"].text = Config.CARDS[c]["text"]
 			cui["play"].disabled = not act or not game.can_play(i, "normal")
+			cui["key"].visible = c == "activate" and game.rune_key_ready
+			cui["key"].disabled = not act or not game.can_play(i, "rune_key")
 			cui["move"].disabled = not act
 			cui["quiet"].disabled = not act
 			var selected: bool = not pending.is_empty() and pending["i"] == i
@@ -915,10 +915,11 @@ func _refresh() -> void:
 			cui["title"].text = ""
 			cui["text"].text = ""
 			cui["art"].texture = null
+			cui["key"].visible = false
 			for key in ["play", "move", "quiet"]:
 				cui[key].disabled = true
-	ui["focus_btn"].disabled = not act or not game.can_focus()
-	ui["focus_btn"].text = "Spend Focus: redraw (%d)" % game.focus
+	ui["redraw_btn"].disabled = not act or not game.can_redraw()
+	ui["redraw_btn"].text = "Free redraw (once per run)" if game.redraw_ready else "Redraw used this run"
 	if not pending.is_empty():
 		ui["hint"].text = "Click a highlighted room (Esc to cancel)."
 	elif busy:

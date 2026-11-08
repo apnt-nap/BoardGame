@@ -11,7 +11,6 @@ var game                       # scripts/core/game.gd instance
 var room_names: Array = []
 var targets: Array = []        # rooms the player may click right now
 var show_debug := false
-var reveal_path: Array = []    # Library reveal of the Knight's route
 var hovered := -1
 var shake := 0.0
 var flash := Color(0, 0, 0, 0)
@@ -200,10 +199,10 @@ func _draw() -> void:
 		draw_circle(tc, c * 0.06, P.EMBER)
 		draw_string(font, tc + Vector2(-4, 5), "!", HORIZONTAL_ALIGNMENT_CENTER, 8, 14, P.BG)
 
-	# Knight planned route (debug) / Library reveal.
+	# Knight planned route (debug overlay only).
 	var kstate: String = game.knight.state
 	var kcol: Color = P.STATE_COLORS[kstate]
-	var route: Array = game.knight.plan if show_debug else reveal_path
+	var route: Array = game.knight.plan if show_debug else []
 	if not route.is_empty():
 		var pts := PackedVector2Array([room_center(game.knight.room)])
 		for r in route:
@@ -333,10 +332,6 @@ func _draw_special(center: Vector2, s: float, type: String, corrupted: bool) -> 
 		"chapel":
 			draw_rect(Rect2(center + Vector2(-s * 0.12, -s), Vector2(s * 0.24, s * 2.0)), col)
 			draw_rect(Rect2(center + Vector2(-s * 0.6, -s * 0.45), Vector2(s * 1.2, s * 0.24)), col)
-		"library":
-			draw_rect(Rect2(center + Vector2(-s, -s * 0.6), Vector2(s * 0.95, s * 1.2)), col)
-			draw_rect(Rect2(center + Vector2(s * 0.05, -s * 0.6), Vector2(s * 0.95, s * 1.2)), col.darkened(0.2))
-			draw_line(center + Vector2(0, -s * 0.6), center + Vector2(0, s * 0.6), P.BG, 2.0)
 		"bell_tower":
 			draw_colored_polygon(PackedVector2Array([center + Vector2(-s * 0.35, -s * 0.8), center + Vector2(s * 0.35, -s * 0.8), center + Vector2(s * 0.8, s * 0.6), center + Vector2(-s * 0.8, s * 0.6)]), col)
 			draw_circle(center + Vector2(0, s * 0.8), s * 0.2, col)
