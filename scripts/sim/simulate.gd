@@ -11,17 +11,22 @@ const Bot = preload("res://scripts/core/bot.gd")
 func _init() -> void:
 	var games := 1000
 	var out_path := "res://sim_results.csv"
+	var only_diff := ""
 	var args := OS.get_cmdline_user_args()
 	for i in args.size():
 		if args[i] == "--games" and i + 1 < args.size():
 			games = int(args[i + 1])
 		elif args[i] == "--out" and i + 1 < args.size():
 			out_path = args[i + 1]
+		elif args[i] == "--diff" and i + 1 < args.size():
+			only_diff = args[i + 1]
 	var bot := Bot.new()
 	var lines := ["hero,difficulty,games,win_rate,avg_turns,avg_encounters,avg_damage,loss_health,loss_time"]
 	var seed_base := 1000
 	print("Simulating %d games per hero per difficulty..." % games)
 	for diff in Config.DIFFICULTY_ORDER:
+		if only_diff != "" and diff != only_diff:
+			continue
 		for hero in Config.HERO_ORDER:
 			var wins := 0
 			var turns := 0
