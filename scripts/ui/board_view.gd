@@ -50,7 +50,7 @@ func origin() -> Vector2:
 func room_rect(r: int) -> Rect2:
 	var c := cell()
 	var p := Vector2(r % 5, r / 5) * c + origin()
-	var pad := c * 0.085
+	var pad := c * 0.035
 	return Rect2(p + Vector2(pad, pad), Vector2(c - pad * 2, c - pad * 2))
 
 
@@ -177,7 +177,7 @@ func _draw() -> void:
 	_round_rect(grid.grow(c * 0.04), P.INK, c * 0.08, false, 4.0)
 
 	# Doorways: wooden-floor corridors under the rooms, with ink edges.
-	var w := c * 0.26
+	var w := room_rect(0).size.x * 0.125
 	for r in 25:
 		for g in castle.neighbors(r):
 			if g > r:
@@ -185,17 +185,7 @@ func _draw() -> void:
 				var b := room_center(g)
 				var rect := Rect2(a, Vector2.ZERO).expand(b).grow(w * 0.5)
 				draw_rect(rect, P.INK)
-				draw_rect(rect.grow(-3.0), P.DOORWAY)
-				# planks
-				var horiz := absf(a.y - b.y) < 1.0
-				for k in 3:
-					var t := (k + 1) / 4.0
-					if horiz:
-						var y := rect.position.y + rect.size.y * t
-						draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), Color(P.INK, 0.25), 1.0)
-					else:
-						var x := rect.position.x + rect.size.x * t
-						draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), Color(P.INK, 0.25), 1.0)
+				draw_rect(rect.grow(-2.0), P.DOORWAY)
 
 	var kp_info: Dictionary = game.knight_public()
 	for r in 25:
@@ -350,6 +340,62 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 		floor_col = Color("3f5560")
 	if corrupted:
 		floor_col = Color("2e2240")
+	var tile := Art.tex(P.ROOM_TILES[0 if (si >= 0 or sp != "") else posmod(r * 7 + int(game.rng.seed % 1000), P.ROOM_TILES.size())])
+	if tile != null:
+		var mod := Color.WHITE
+		if corrupted:
+			mod = Color(0.45, 0.35, 0.55)
+		elif si >= 0:
+			mod = Color(0.82, 0.76, 1.0)
+		elif sp == "chapel":
+			mod = Color(1.0, 0.93, 0.8)
+		elif sp == "passage":
+			mod = Color(0.75, 0.95, 0.95)
+		elif searched:
+			mod = Color(0.72, 0.72, 0.78)
+		draw_texture_rect(tile, rect, false, mod)
+		_close_walls(r, rect, tile, mod, castle)
+	else:
+		_draw_plain_room(rect, floor_col, c)
+	if searched and si < 0 and tile == null:
+		draw_rect(rect, Color(P.NIGHT, 0.25))
+	_draw_room_overlays(r, rect, c, body, sight, castle, corrupted, searched, sp, si, tile != null)
+
+
+## Stone patches over the tile's doorway gaps on every side without a door.
+func _close_walls(r: int, rect: Rect2, tile: Texture2D, mod: Color, castle) -> void:
+	var ts := tile.get_size()
+	var p: Vector2i = castle.pos(r)
+	var sides := [[Vector2i(0, -1), "top"], [Vector2i(0, 1), "bottom"], [Vector2i(-1, 0), "left"], [Vector2i(1, 0), "right"]]
+	var t := 0.105   # wall thickness
+	var g0 := 0.432  # gap start
+	var gw := 0.136  # gap width (with a little overlap)
+	var sx := 0.16   # where the patch is copied from (plain wall blocks)
+	for sd in sides:
+		var d: Vector2i = sd[0]
+		var q := p + d
+		var open := q.x >= 0 and q.y >= 0 and q.x < 5 and q.y < 5 and castle.has_door(r, castle.idx(q.x, q.y))
+		if open:
+			continue
+		var dst: Rect2
+		var src: Rect2
+		match sd[1]:
+			"top":
+				dst = Rect2(rect.position + Vector2(rect.size.x * g0, 0), Vector2(rect.size.x * gw, rect.size.y * t))
+				src = Rect2(ts.x * sx, 0, ts.x * gw, ts.y * t)
+			"bottom":
+				dst = Rect2(rect.position + Vector2(rect.size.x * g0, rect.size.y * (1.0 - t)), Vector2(rect.size.x * gw, rect.size.y * t))
+				src = Rect2(ts.x * sx, ts.y * (1.0 - t), ts.x * gw, ts.y * t)
+			"left":
+				dst = Rect2(rect.position + Vector2(0, rect.size.y * g0), Vector2(rect.size.x * t, rect.size.y * gw))
+				src = Rect2(0, ts.y * sx, ts.x * t, ts.y * gw)
+			_:
+				dst = Rect2(rect.position + Vector2(rect.size.x * (1.0 - t), rect.size.y * g0), Vector2(rect.size.x * t, rect.size.y * gw))
+				src = Rect2(ts.x * (1.0 - t), ts.y * sx, ts.x * t, ts.y * gw)
+		draw_texture_rect_region(tile, dst, src, mod)
+
+
+func _draw_plain_room(rect: Rect2, floor_col: Color, c: float) -> void:
 	_round_rect(rect, floor_col, c * 0.06)
 	# Flagstones.
 	var rows := 3
@@ -364,8 +410,11 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 			var x := rect.position.x + rect.size.x * (shift + 0.5 * m)
 			if x < rect.end.x - 6:
 				draw_line(Vector2(x, y0 + 2), Vector2(x, y1 - 2), P.FLOOR_LINE, 2.0)
-	if searched and si < 0:
-		draw_rect(rect, Color(P.NIGHT, 0.25))
+
+
+
+func _draw_room_overlays(r: int, rect: Rect2, c: float, body: Font, sight: int, castle, corrupted: bool, searched: bool, sp: String, si: int, tiled: bool) -> void:
+	var inset := rect.size.x * (0.1 if tiled else 0.0)
 	# Knight's line of sight: hatched orange plus an eye.
 	if sight > 0 and r != game.knight.room and castle.in_sight(game.knight.room, r, sight) and knight_dust <= 0.0:
 		_hatch(rect, Color(P.SIGHT, 0.4))
@@ -373,9 +422,10 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 	if _pulse_rooms.has(r):
 		var pr: Array = _pulse_rooms[r]
 		draw_rect(rect, Color(pr[1], 0.35 * minf(1.0, pr[0])))
-	# Thick ink outline with a light inner edge.
-	_round_rect(rect, P.INK, c * 0.06, false, 3.0)
-	draw_line(rect.position + Vector2(c * 0.07, 3), Vector2(rect.end.x - c * 0.07, rect.position.y + 3), Color(1, 1, 1, 0.12), 2.0)
+	if not tiled:
+		# Thick ink outline with a light inner edge.
+		_round_rect(rect, P.INK, c * 0.06, false, 3.0)
+		draw_line(rect.position + Vector2(c * 0.07, 3), Vector2(rect.end.x - c * 0.07, rect.position.y + 3), Color(1, 1, 1, 0.12), 2.0)
 
 	# Name and coordinate.
 	var name_text: String = room_names[r] if r < room_names.size() else ""
@@ -385,12 +435,16 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 		name_text = Config.SPECIALS[sp]["name"]
 	var fs := int(c * 0.115)
 	var tc := P.STARLIGHT if not corrupted else Color(P.MOON_TEXT, 0.6)
-	var name_w := rect.size.x - c * 0.3
+	var name_w := rect.size.x - inset * 2.0 - c * 0.24
 	var nfs := fs
 	while nfs > int(fs * 0.7) and body.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs).x > name_w:
 		nfs -= 1  # shrink long names ("Scriptorium") instead of clipping them
-	draw_string(body, rect.position + Vector2(7, fs + 3), name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, tc)
-	draw_string(body, rect.position + Vector2(rect.size.x - c * 0.26, fs + 3), game.room_name(r), HORIZONTAL_ALIGNMENT_RIGHT, c * 0.22, int(fs * 0.9), Color(P.MOON_TEXT, 0.8))
+	var np := rect.position + Vector2(inset + 5, inset + fs + 1)
+	draw_string_outline(body, np, name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, 5, Color(P.INK, 0.9))
+	draw_string(body, np, name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, tc)
+	var cp := Vector2(rect.end.x - inset - c * 0.22 - 4, np.y)
+	draw_string_outline(body, cp, game.room_name(r), HORIZONTAL_ALIGNMENT_RIGHT, c * 0.22, int(fs * 0.9), 4, Color(P.INK, 0.9))
+	draw_string(body, cp, game.room_name(r), HORIZONTAL_ALIGNMENT_RIGHT, c * 0.22, int(fs * 0.9), P.MOON_TEXT)
 
 	var mid := rect.get_center() + Vector2(0, c * 0.06)
 	if si >= 0:
@@ -398,34 +452,29 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 	elif sp != "":
 		_draw_prop(mid, c * 0.2, sp, corrupted)
 	if searched and si < 0:
-		var stamp := rect.end - Vector2(c * 0.15, c * 0.15)
+		var stamp := rect.end - Vector2(inset + c * 0.1, inset + c * 0.1)
 		Icon.draw_icon(self, "check", stamp, c * 0.08, Color(P.MOON_TEXT, 0.9))
-		draw_string(body, rect.position + Vector2(7, rect.size.y - 7), "searched", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs * 0.85), Color(P.MOON_TEXT, 0.85))
+		_outlined(body, rect.position + Vector2(inset + 5, rect.size.y - inset - 5), "searched", int(fs * 0.85), P.MOON_TEXT)
 	if corrupted:
 		var cr := Color("b07cd0")
 		draw_polyline(PackedVector2Array([rect.position + Vector2(rect.size.x * 0.2, 4), rect.position + Vector2(rect.size.x * 0.35, rect.size.y * 0.4), rect.position + Vector2(rect.size.x * 0.28, rect.size.y * 0.6), rect.position + Vector2(rect.size.x * 0.45, rect.size.y - 4)]), cr, 2.0)
 		draw_polyline(PackedVector2Array([rect.position + Vector2(rect.size.x - 4, rect.size.y * 0.3), rect.position + Vector2(rect.size.x * 0.7, rect.size.y * 0.45), rect.position + Vector2(rect.size.x * 0.75, rect.size.y * 0.7)]), cr, 2.0)
-		draw_string(body, rect.position + Vector2(7, rect.size.y - 7), "corrupted", HORIZONTAL_ALIGNMENT_LEFT, -1, int(fs * 0.85), cr)
+		_outlined(body, rect.position + Vector2(inset + 5, rect.size.y - inset - 5), "corrupted", int(fs * 0.85), cr)
 
 
 ## The crystal shrine. Unrestored: dim, empty sockets. Restored: bright, glowing, sockets lit.
 func _draw_shrine(center: Vector2, c: float, idx: int, restored: bool, body: Font) -> void:
-	var tex := Art.tex(P.SHRINE_ART)
-	var h := c * 0.6
+	var tex := Art.tex(P.SHRINE_RESTORED[idx] if restored else P.SHRINE_ARTS[idx])
+	if tex == null:
+		tex = Art.tex(P.SHRINE_ART)
+	var h := c * 0.56
 	if restored:
 		draw_circle(center + Vector2(0, -h * 0.12), c * (0.3 + 0.02 * _wave(3.0)), Color(P.CRYSTAL_LIGHT, 0.28))
 	if tex != null:
 		var ts := tex.get_size()
 		var wdt := ts.x / ts.y * h
 		var r := Rect2(center - Vector2(wdt * 0.5, h * 0.55), Vector2(wdt, h))
-		draw_texture_rect(tex, r, false, Color.WHITE if restored else Color(0.5, 0.48, 0.6))
-		# The two sockets in the pedestal (about 27-47% and 53-73% across, 83-93% down).
-		for k in 2:
-			var sx := r.position.x + r.size.x * (0.27 + 0.26 * k)
-			var sock := Rect2(Vector2(sx, r.position.y + r.size.y * 0.83), Vector2(r.size.x * 0.2, r.size.y * 0.1))
-			if restored:
-				draw_rect(sock, P.CRYSTAL_LIGHT)
-				draw_rect(sock.grow(2), Color(P.STARLIGHT, 0.5 + 0.3 * _wave(4.0)), false, 2.0)
+		draw_texture_rect(tex, r, false, Color.WHITE if restored else Color(0.72, 0.7, 0.82))
 	else:
 		var col := P.CRYSTAL_LIGHT if restored else Color(0.45, 0.4, 0.55)
 		Icon.draw_icon(self, "shard", center + Vector2(0, -h * 0.15), h * 0.4, col)
@@ -538,3 +587,8 @@ func _hatch(r: Rect2, col: Color) -> void:
 		if p0.x < p1.x:
 			draw_line(r.position + p0, r.position + p1, col, 2.0)
 		k += step
+
+
+func _outlined(font: Font, pos: Vector2, text: String, fs: int, col: Color) -> void:
+	draw_string_outline(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(P.INK, 0.9))
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)

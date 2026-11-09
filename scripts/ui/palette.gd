@@ -15,7 +15,7 @@ const STONE_DARK := Color("3a3a44")
 const STONE_LIGHT := Color("6e6886")
 const FLOOR := Color("4a4462")
 const FLOOR_LINE := Color("403a56")
-const DOORWAY := Color("8a7a66")
+const DOORWAY := Color("dcd0c3")       # matches the doorway gaps in the room tiles
 const INK := Color("2a2238")            # thick storybook outlines and body text on parchment
 
 # Parchment UI
@@ -93,6 +93,9 @@ const SEAL_SHAPES := ["triangle", "diamond", "circle"]
 # Art file names in res://art/ (see scripts/tools/import_art.gd). A missing file falls back to
 # shapes drawn in code.
 const SHRINE_ART := "seal_shrine"
+const SHRINE_ARTS := ["seal_shrine_a", "seal_shrine_b", "seal_shrine_c"]
+const SHRINE_RESTORED := ["seal_shrine_restored", "seal_shrine_b_restored", "seal_shrine_c_restored"]  # B and C: recoloured from the unrestored art
+const ROOM_TILES := ["room_floor_plain", "room_floor_desk", "room_floor_barrels"]  # walls with a doorway gap on every side
 const KNIGHT_ART := "knight"
 const PARCHMENT_ART := "parchment"
 const MENU_ART := "menu_bg"

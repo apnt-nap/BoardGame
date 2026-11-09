@@ -870,48 +870,74 @@ func _make_card(i: int) -> Dictionary:
 
 
 func _build_encounter() -> void:
+	## Full-screen scene (layout from Asia's mockup): Knight left, hero right, title banner,
+	## one card per choice. Every word is real text, so it always matches the rules.
 	var layer := Control.new()
 	_full(layer)
 	layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	game_root.add_child(layer)
 	ui["encounter"] = layer
 	layer.visible = false
-	var shade := ColorRect.new()
-	shade.color = Color(P.NIGHT, 0.55)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.anchor_left = 1.0
-	shade.anchor_right = 1.0
-	shade.anchor_bottom = 1.0
-	shade.offset_left = -800
-	shade.offset_top = 90  # keep the status bar readable during the encounter
-	layer.add_child(shade)
-	var v := _vbox(10)
-	var panel := _parch(v, 20, P.KNIGHT_VISOR, 4)
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.offset_left = -790
-	panel.offset_right = -16
-	panel.offset_top = 96
-	layer.add_child(panel)
-	ui["enc_panel"] = panel
-	var top := _hbox(14)
-	v.add_child(top)
-	top.add_child(_art_rect(P.KNIGHT_ART, Vector2(96, 128)))
-	var tv := _vbox(2)
-	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(tv)
-	tv.add_child(_label("The Cursed Knight has found you", 30, P.INK, true, "title"))
-	ui["enc_status"] = _label("", 20, P.TEXT, true, "bold")
-	tv.add_child(ui["enc_status"])
-	ui["enc_shield"] = _label("", 18, P.GOOD, true, "bold")
-	tv.add_child(ui["enc_shield"])
-	ui["enc_first_l"] = _label("First, if you like (this does not end the encounter):", 17, P.TEXT_DIM, true, "bold")
-	v.add_child(ui["enc_first_l"])
+	_backdrop(layer, P.TITLE_ART, 0.3)
+	var kn := _art_rect(P.KNIGHT_ART, Vector2.ZERO)
+	kn.position = Vector2(30, 150)
+	kn.size = Vector2(420, 560)
+	layer.add_child(kn)
+	var hero := _art_rect("", Vector2.ZERO)
+	hero.position = Vector2(1210, 250)
+	hero.size = Vector2(360, 460)
+	layer.add_child(hero)
+	ui["enc_hero"] = hero
+	var col := _vbox(14)
+	col.position = Vector2(360, 24)
+	col.size = Vector2(880, 850)
+	layer.add_child(col)
+	var bv := _vbox(2)
+	var banner := _parch(bv, 22, P.GOLD, 4)
+	banner.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(banner)
+	var t := _label("The Cursed Knight found you", 40, P.INK, false, "title")
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(t)
+	ui["enc_status"] = _label("", 21, P.TEXT, false, "bold")
+	ui["enc_status"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(ui["enc_status"])
+	ui["enc_shield"] = _label("", 19, P.GOOD, false, "bold")
+	ui["enc_shield"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(ui["enc_shield"])
+	var gap := Control.new()
+	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(gap)
+	var choose := _night_title("Choose your escape.", 32, "head")
+	choose.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(choose)
+	ui["enc_opts"] = _hbox(18)
+	ui["enc_opts"].alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(ui["enc_opts"])
+	var fh := _hbox(10)
+	fh.alignment = BoxContainer.ALIGNMENT_CENTER
+	ui["enc_first_box"] = _parch(fh, 12)
+	ui["enc_first_box"].size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(ui["enc_first_box"])
+	fh.add_child(_label("First, if you like (does not end the encounter):", 18, P.TEXT_DIM, false, "bold"))
 	ui["enc_first"] = _hbox(10)
-	v.add_child(ui["enc_first"])
-	v.add_child(_label("Then choose one:", 19, P.INK, false, "head"))
-	ui["enc_opts"] = _vbox(10)
-	v.add_child(ui["enc_opts"])
+	fh.add_child(ui["enc_first"])
+	var foot := _night_title("Hero items and the Smoke Vial appear as extra choices while you have them.", 18, "body")
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(foot)
+
+
+## A dark button with cream text (encounter choices, end screen).
+func _dark_button(text: String, cb: Callable, fill: Color, min_w: int = 0) -> Button:
+	var b := _button(text, cb, min_w)
+	b.add_theme_stylebox_override("normal", _sb(fill, P.GOLD, 3))
+	b.add_theme_stylebox_override("hover", _sb(fill.lightened(0.15), P.AMBER, 3))
+	b.add_theme_stylebox_override("pressed", _sb(fill.darkened(0.2), P.AMBER, 3))
+	for k in ["font_color", "font_hover_color", "font_pressed_color"]:
+		b.add_theme_color_override(k, P.STARLIGHT)
+	b.add_theme_font_size_override("font_size", _fs(20))
+	b.custom_minimum_size.y = _fs(52)
+	return b
 
 
 func _encounter_copy(id: String) -> Array:
@@ -919,15 +945,15 @@ func _encounter_copy(id: String) -> Array:
 	var safe: int = game.hide_safe_min()
 	match id:
 		"run":
-			return ["RUN", "Flee 1 room, Noise +1. On a die roll of 1-2 you also lose 1 Health.", "run", "", P.INK]
+			return ["RUN", "Flee 1 connected room. Noise +1.\nRoll D6. On 1-2 you also lose 1 Health.", "run", "", Color("6b2a35")]
 		"hide":
-			return ["HIDE", "Die %d-6: safe. You stay and it searches nearby.\nDie 1-%d: -1 Health and you flee 1 room. Noise does not change." % [safe, safe - 1], "hide_enc", "", P.PLUM]
+			return ["HIDE", "Roll D6. %d-6: safe. You stay and the Knight searches nearby.\n1-%d: lose 1 Health and flee 1 room. Noise unchanged." % [safe, safe - 1], "hide_enc", "", P.PLUM]
 		"lantern":
-			return ["LANTERN", "Escape 1 room silently. The Knight loses its next turn.", "", P.ITEM_ART["lantern"], P.GOLD]
+			return ["LANTERN", "Escape 1 room silently. The Knight loses its next turn.", "", P.ITEM_ART["lantern"], P.GOLD_DARK]
 		"silence":
-			return ["SILENCE SCROLL", "Escape 1 room. Noise -2.", "", P.ITEM_ART["silence"], P.GOLD]
+			return ["SILENCE SCROLL", "Escape 1 room. Noise -2.", "", P.ITEM_ART["silence"], P.GOLD_DARK]
 		"smoke", "smoke_vial":
-			return ["SMOKE VIAL", "Escape 1 room. No damage and no Noise.", "", P.ITEM_ART["smoke"], P.GOLD]
+			return ["SMOKE VIAL", "Escape 1 room. No damage and no Noise.", "", P.ITEM_ART["smoke"], P.GOLD_DARK]
 	return [id.to_upper(), "", "", "", P.INK]
 
 
@@ -1842,8 +1868,9 @@ func _refresh_encounter(hi: Dictionary) -> void:
 	board.dim = enc
 	if not enc:
 		return
-	ui["enc_status"].text = "Health %d/%d. Noise %d." % [game.health, Config.MAX_HEALTH, game.noise]
-	ui["enc_shield"].text = "Old Shield will block the next hit." if "old_shield" in game.treasures else ""
+	ui["enc_hero"].texture = Art.tex(P.HERO_ART.get(game.hero, ""))
+	ui["enc_status"].text = "Health %d/%d    Noise %d/%d" % [game.health, Config.MAX_HEALTH, game.noise, Config.MAX_NOISE]
+	ui["enc_shield"].text = "Your Old Shield will block the next hit." if "old_shield" in game.treasures else ""
 	ui["enc_shield"].visible = ui["enc_shield"].text != ""
 	for ch in ui["enc_first"].get_children():
 		ch.queue_free()
@@ -1865,82 +1892,145 @@ func _refresh_encounter(hi: Dictionary) -> void:
 			b.add_theme_constant_override("icon_max_width", 34)
 			ui["enc_first"].add_child(b)
 			any_first = true
-	ui["enc_first_l"].visible = any_first
-	ui["enc_first"].visible = any_first
+	ui["enc_first_box"].visible = any_first
 	for ch in ui["enc_opts"].get_children():
 		ch.queue_free()
-	for o in game.encounter_options():
+	var opts: Array = game.encounter_options()
+	var w := 400 if opts.size() <= 2 else 280
+	for o in opts:
 		var id: String = o["id"]
 		var cp: Array = _encounter_copy(id)
-		var b := Button.new()
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, _fs(84))
-		b.add_theme_stylebox_override("normal", _sb(P.PARCHMENT_DARK, cp[4], 4, 12))
-		b.add_theme_stylebox_override("hover", _sb(P.PARCHMENT, P.AMBER, 5, 12))
-		b.add_theme_stylebox_override("pressed", _sb(P.AMBER, P.INK, 5, 12))
-		b.pressed.connect(func():
-			sfx.play("click")
-			_on_encounter(id))
-		var row := _hbox(14)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(_full(_margin(row, 10)))
+		var card := _vbox(0)
+		card.custom_minimum_size.x = w
+		# Name plate
+		var plate_row := _hbox(12)
+		plate_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		var plate := PanelContainer.new()
+		plate.add_theme_stylebox_override("panel", _sb(cp[4], P.GOLD, 4, 12, 16))
+		plate.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		plate.add_child(plate_row)
 		var ic: Control
 		if cp[3] != "":
-			ic = _art_rect(cp[3], Vector2(56, 56))
+			ic = _art_rect(cp[3], Vector2(44, 44))
 		else:
-			ic = Icon.make(cp[2], P.PLUM if id == "hide" else P.INK, 50)
-		row.add_child(ic)
-		var tl := _label(cp[0], 24, P.INK, false, "head")
-		tl.custom_minimum_size.x = 190
-		row.add_child(tl)
-		var tx := _label(cp[1], 18, P.TEXT, true)
-		tx.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(tx)
-		for n in [ic, tl, tx]:
-			n.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ui["enc_opts"].add_child(b)
+			ic = Icon.make(cp[2], P.STARLIGHT, 40)
+			ic.set("outline", Color(0, 0, 0, 0))
+		plate_row.add_child(ic)
+		plate_row.add_child(_label(cp[0], 30 if w > 300 else 24, P.STARLIGHT, false, "head"))
+		card.add_child(plate)
+		# Parchment body with the rule and the choose button
+		var bodyv := _vbox(14)
+		var bodyp := _parch(bodyv, 20, P.GOLD, 4)
+		bodyp.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		card.add_child(bodyp)
+		var tx := _label(cp[1], 20, P.INK, true)
+		tx.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tx.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		tx.custom_minimum_size.y = _fs(84)
+		bodyv.add_child(tx)
+		var cb := _dark_button("Choose " + String(cp[0]).capitalize(), func(): _on_encounter(id), cp[4])
+		cb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		cb.custom_minimum_size.x = mini(w - 60, 300)
+		bodyv.add_child(cb)
+		ui["enc_opts"].add_child(card)
 
 
 # ================================================================== end screen
 
 func _build_end() -> void:
-	end_root = _dim_layer(0.72)
+	## Full-screen victory and defeat scenes (layout from Asia's mockups), with live text.
+	end_root = Control.new()
+	_full(end_root)
+	end_root.mouse_filter = Control.MOUSE_FILTER_STOP
 	root_box.add_child(end_root)
-	var cc := _full(CenterContainer.new())
-	end_root.add_child(cc)
-	var h := _hbox(24)
-	var panel := _parch(h, 30)
-	cc.add_child(panel)
-	ui["end_panel"] = panel
-	ui["end_art"] = _art_rect("", Vector2(220, 300))
-	h.add_child(ui["end_art"])
-	var v := _vbox(10)
-	v.custom_minimum_size.x = 620
-	h.add_child(v)
-	ui["end_title"] = _label("", 46, P.INK, false, "title")
-	v.add_child(ui["end_title"])
-	ui["end_reason"] = _label("", 21, P.TEXT, true, "bold")
-	v.add_child(ui["end_reason"])
-	ui["end_stats"] = _rich(19)
-	v.add_child(ui["end_stats"])
-	ui["end_tip"] = _label("", 19, P.TEXT_DIM, true)
-	v.add_child(ui["end_tip"])
+	var bg := _art_rect("", Vector2.ZERO, TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+	end_root.add_child(_full(bg))
+	ui["end_bg"] = bg
+	var dim := ColorRect.new()
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	end_root.add_child(_full(dim))
+	ui["end_dim"] = dim
+	var kn := _art_rect(P.KNIGHT_ART, Vector2.ZERO)
+	kn.position = Vector2(1210, 120)
+	kn.size = Vector2(360, 500)
+	end_root.add_child(kn)
+	ui["end_knight"] = kn
+	var hero := _art_rect("", Vector2.ZERO)
+	hero.position = Vector2(40, 320)
+	hero.size = Vector2(330, 520)
+	end_root.add_child(hero)
+	ui["end_hero"] = hero
+	var col := _vbox(16)
+	col.position = Vector2(380, 24)
+	col.size = Vector2(840, 860)
+	end_root.add_child(col)
+	var bv := _vbox(2)
+	var banner := _parch(bv, 26, P.GOLD, 4)
+	banner.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(banner)
+	ui["end_title"] = _label("", 50, P.INK, false, "title")
+	ui["end_title"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bv.add_child(ui["end_title"])
+	ui["end_reason"] = _label("", 22, P.TEXT, true, "bold")
+	ui["end_reason"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui["end_reason"].custom_minimum_size.x = 640
+	bv.add_child(ui["end_reason"])
+	# Victory: the three restored shrines. Defeat: what ended the run (heart or hourglass).
+	var shr := _hbox(30)
+	shr.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(shr)
+	ui["end_shrines"] = shr
+	for k in 3:
+		shr.add_child(_art_rect(P.SHRINE_RESTORED[k], Vector2(150, 200)))
+	var cause := _hbox(24)
+	cause.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(cause)
+	ui["end_cause"] = cause
+	ui["cause_health"] = _vbox(4)
+	ui["cause_health"].add_child(Icon.make("heart", P.HEALTH, 110, false))
+	var hl := _night_title("Health reached 0.", 22, "body")
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui["cause_health"].add_child(hl)
+	cause.add_child(ui["cause_health"])
+	cause.add_child(_night_title("or", 26, "head"))
+	ui["cause_time"] = _vbox(4)
+	ui["cause_time"].add_child(Icon.make("hourglass", P.AMBER, 110))
+	var tl := _night_title("Turn %d ended." % Config.TURN_LIMIT, 22, "body")
+	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui["cause_time"].add_child(tl)
+	cause.add_child(ui["cause_time"])
+	var sv := _vbox(4)
+	var sp := _parch(sv, 18)
+	sp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(sp)
+	ui["end_stats"] = _rich(18)
+	ui["end_stats"].custom_minimum_size.x = 600
+	sv.add_child(ui["end_stats"])
+	ui["end_tip"] = _label("", 19, P.TEXT_DIM, true, "bold")
+	ui["end_tip"].custom_minimum_size.x = 600
+	sv.add_child(ui["end_tip"])
 	ui["end_unlocks"] = _label("", 22, P.GOLD_DARK, true, "head")
-	v.add_child(ui["end_unlocks"])
-	var row := _hbox(10)
-	v.add_child(row)
-	row.add_child(_button("Play again", _start_game, 170, true))
+	sv.add_child(ui["end_unlocks"])
+	var row := _hbox(16)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(row)
+	ui["end_again"] = _dark_button("Play again", _start_game, Color("3f7a3a"), 230)
+	row.add_child(ui["end_again"])
+	row.add_child(_dark_button("Main menu", func(): _show("title"), P.PLUM, 230))
 	row.add_child(_button("Change hero", func(): _show("heroes"), 170))
-	row.add_child(_button("Title", func(): _show("title"), 120))
+	ui["end_footer"] = _night_title("", 22, "head")
+	ui["end_footer"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(ui["end_footer"])
 	var lb := LinkButton.new()
 	lb.text = "Show Knight log"
 	lb.focus_mode = Control.FOCUS_NONE
-	lb.add_theme_color_override("font_color", P.TEXT_DIM)
+	lb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	lb.add_theme_color_override("font_color", P.MOON_TEXT)
 	lb.add_theme_font_size_override("font_size", _fs(15))
-	v.add_child(lb)
-	ui["end_log"] = _label("", 15, P.TEXT_DIM, true)
+	col.add_child(lb)
+	ui["end_log"] = _night_title("", 15, "body")
 	ui["end_log"].visible = false
-	v.add_child(ui["end_log"])
+	col.add_child(ui["end_log"])
 	lb.pressed.connect(func(): ui["end_log"].visible = not ui["end_log"].visible)
 	end_root.visible = false
 
@@ -1951,26 +2041,36 @@ func _show_end() -> void:
 	var unlocks: Array = profile.record(game.hero, game.difficulty, won, turns, _hero_names())
 	var s: Dictionary = game.stats
 	var timed_out: bool = game.health > 0 and not won
-	ui["end_art"].texture = Art.tex(P.SHRINE_ART if won else P.KNIGHT_ART)
-	ui["end_panel"].frame = P.CRYSTAL if won else P.HEALTH_TEXT
-	ui["end_panel"].queue_redraw()
-	ui["end_title"].text = "The curse breaks" if won else ("Midnight" if timed_out else "Your Health ran out")
-	ui["end_reason"].text = game.end_reason if won else ("Turn %d ended before the last Seal was restored." % Config.TURN_LIMIT if timed_out else "The Cursed Knight caught you one time too many.")
-	var best: String = ("   Best on %s: %d turns" % [Config.DIFFICULTY[game.difficulty]["name"], profile.best_turns[game.difficulty]]) if profile.best_turns.has(game.difficulty) else ""
-	ui["end_stats"].text = "[b]%s[/b] on %s\nTurns: %d of %d%s\nSeals restored: %d of 3\nTimes the Knight found you: %d    Damage taken: %d\nShards found: %d    Noise made: %d    Keep shifts: %d" % [
+	ui["end_bg"].texture = Art.tex(P.MENU_ART if won else P.TITLE_ART)
+	ui["end_dim"].color = Color(P.NIGHT, 0.25 if won else 0.55)
+	ui["end_hero"].texture = Art.tex(P.HERO_ART.get(game.hero, ""))
+	ui["end_hero"].modulate = Color.WHITE if won else Color(0.7, 0.68, 0.8)
+	ui["end_knight"].visible = not won
+	ui["end_shrines"].visible = won
+	ui["end_cause"].visible = not won
+	ui["cause_health"].modulate = Color(1, 1, 1, 0.35 if timed_out else 1.0)
+	ui["cause_time"].modulate = Color(1, 1, 1, 1.0 if timed_out else 0.35)
+	ui["end_title"].text = "The curse is lifted" if won else "The Keep remains cursed"
+	ui["end_reason"].text = "All three Seals are restored." if won else ("Midnight: turn %d ended before the last Seal was restored." % Config.TURN_LIMIT if timed_out else "Your Health reached 0. The Cursed Knight caught you one time too many.")
+	ui["end_again"].text = "Play again" if won else "Try again"
+	ui["end_footer"].text = "You escaped Blackthorn Keep." if won else ""
+	ui["end_footer"].visible = won
+	var best: String = ("    Best on %s: %d turns" % [Config.DIFFICULTY[game.difficulty]["name"], profile.best_turns[game.difficulty]]) if profile.best_turns.has(game.difficulty) else ""
+	ui["end_stats"].text = "[b]%s[/b] on %s    Turns: %d of %d%s\nSeals restored: %d of 3    Times found: %d    Damage taken: %d\nShards found: %d    Noise made: %d    Keep shifts: %d" % [
 		Config.HEROES[game.hero]["name"], Config.DIFFICULTY[game.difficulty]["name"], turns, Config.TURN_LIMIT, best,
 		game.seals_restored(), s["found"], s["damage"], s["shards"], s["noise_made"], s["keep_shifts"]]
 	var tip := ""
 	if not won:
 		if timed_out:
-			tip = "Tip: midnight came first. Aim to restore a Seal about every 11 turns, and Search rooms on your way between Seals."
+			tip = "Try a different route: aim to restore a Seal about every 11 turns, and Search rooms on your way between Seals."
 		elif s["found"] >= 3:
-			tip = "Tip: the Knight found you %d times. Keep Noise below %d so it can't hear you, and leave hatched rooms it can see." % [s["found"], game.diff["hunt_at"]]
+			tip = "Try a different route: the Knight found you %d times. Keep Noise below %d so it can't hear you, and leave hatched rooms it can see." % [s["found"], game.diff["hunt_at"]]
 		else:
-			tip = "Tip: with 1 Health left, use your hero item or a Smoke Vial to escape an encounter instead of rolling."
+			tip = "Try a different route: with 1 Health left, use your hero item or a Smoke Vial to escape an encounter instead of rolling."
 	ui["end_tip"].text = tip
 	ui["end_tip"].visible = tip != ""
 	ui["end_unlocks"].text = ("Unlocked: " + ", ".join(PackedStringArray(unlocks))) if not unlocks.is_empty() else ""
+	ui["end_unlocks"].visible = not unlocks.is_empty()
 	ui["end_log"].text = "Every Knight decision this run is saved to " + ProjectSettings.globalize_path(LOG_PATH)
 	knight_log.append("")
 	knight_log.append("RESULT: %s on turn %d" % ["WIN" if won else "LOSS", turns])
