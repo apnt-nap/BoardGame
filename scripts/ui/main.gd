@@ -470,8 +470,10 @@ func _build_heroes() -> void:
 
 	var dv := _hbox(24)
 	var detail := _parch(dv, 20)
-	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(detail)
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(fill)
 	ui["hero_big"] = _art_rect("", Vector2(150, 200))
 	dv.add_child(ui["hero_big"])
 	var dt := _vbox(6)
@@ -554,8 +556,8 @@ func _build_difficulty() -> void:
 			sfx.play("click")
 			sel_diff = did
 			_refresh_difficulty())
-		var v := _vbox(10)
-		b.add_child(_full(_margin(v, 22)))
+		var v := _vbox(16)
+		b.add_child(_full(_margin(v, 26)))
 		v.add_child(_label(info["name"], 32, P.INK, false, "head"))
 		var moves: String = "Every turn" if info.get("fixed_move", false) else "On a die roll of %d-6" % info["move_min"]
 		var sees: String = "Same room only" if info["sight"] == 0 else "%d room%s in a straight line" % [info["sight"], "" if info["sight"] == 1 else "s"]
@@ -569,8 +571,8 @@ func _build_difficulty() -> void:
 		]
 		for rw in rows:
 			var line := _vbox(0)
-			line.add_child(_label(rw[0], 16, P.TEXT_DIM))
-			line.add_child(_label(rw[1], 21, P.INK, true, "bold"))
+			line.add_child(_label(rw[0], 18, P.TEXT_DIM))
+			line.add_child(_label(rw[1], 25, P.INK, true, "bold"))
 			v.add_child(line)
 		var lock := _label("", 18, P.BAD, true, "bold")
 		v.add_child(lock)

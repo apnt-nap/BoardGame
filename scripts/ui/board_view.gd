@@ -93,9 +93,9 @@ func _piece_target(piece: String, r: int) -> Vector2:
 	var o := cell() * 0.2
 	match piece:
 		"player":
-			return c + Vector2(-o * 0.9, o * 0.75)
+			return c + Vector2(-o * 0.9, o * 1.5)
 		"knight":
-			return c + Vector2(o * 0.9, o * 0.55)
+			return c + Vector2(o * 0.95, o * 1.5)
 	return c
 
 
@@ -238,7 +238,7 @@ func _draw() -> void:
 		for k in 2:
 			var ph := fmod(_time * 0.6 + k * 0.5, 1.0) if not reduced_motion else 0.5
 			draw_arc(sc, c * (0.2 + 0.25 * ph), 0, TAU, 32, Color(P.CRYSTAL_LIGHT, 0.9 * (1.0 - ph)), 3.0)
-		_tag(room_rect(sr).position + Vector2(6, room_rect(sr).size.y - c * 0.2), "signal", P.CRYSTAL, body, c)
+		_tag(room_rect(sr).position + Vector2(room_rect(sr).size.x * 0.5, c * 0.15), "signal", P.CRYSTAL, body, c)
 
 	# Ripples (noise, bell).
 	for rp in _ripples:
@@ -276,7 +276,6 @@ func _draw() -> void:
 		else:
 			draw_circle(pp, c * 0.13, P.AMBER)
 			draw_arc(pp, c * 0.13, 0, TAU, 24, P.INK, 3.0)
-		_tag(pp + Vector2(-c * 0.12, c * 0.2), "You", P.GOLD_DARK, body, c)
 	if _pos.has("knight"):
 		var kp: Vector2 = _pos["knight"]
 		var ktex := Art.tex(P.KNIGHT_ART)
@@ -295,7 +294,7 @@ func _draw() -> void:
 				draw_circle(dpos, c * 0.02 * (1.5 - knight_dust), Color(P.STONE_LIGHT, 1.0 - knight_dust))
 		elif game.phase != "won":
 			# State badge: icon in a coloured disc, plus the word.
-			var bp := kp + Vector2(c * 0.2, -c * 0.54)
+			var bp := kp + Vector2(c * 0.22, -c * 0.4)
 			draw_circle(bp, c * 0.11, kcol)
 			draw_arc(bp, c * 0.11, 0, TAU, 24, P.INK, 2.5)
 			var icon_kind: String = {"PATROL": "patrol", "INVESTIGATE": "question", "HUNT": "eye", "SEARCH": "search"}[kstate]
@@ -308,7 +307,7 @@ func _draw() -> void:
 				for k in 3:
 					var sp := kp + Vector2(-c * 0.15 + c * 0.15 * k, -c * 0.68 + 4.0 * _wave(6.0 + k))
 					Icon.draw_icon(self, "star", sp, c * 0.05, P.KNIGHT_TRIM)
-				_tag(kp + Vector2(-c * 0.22, c * 0.2), "Stunned", P.GOLD_DARK, body, c)
+				_tag(kp + Vector2(-c * 0.3, -c * 0.12), "Stunned", P.GOLD_DARK, body, c)
 
 	# Seal flare when a Seal is restored.
 	for r in _flares:
@@ -381,7 +380,7 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 	# Name and coordinate.
 	var name_text: String = room_names[r] if r < room_names.size() else ""
 	if si >= 0:
-		name_text = "Seal %s" % char(65 + si)
+		name_text = "Seal %s%s" % [char(65 + si), ", restored" if game.restored[si] else ""]
 	elif sp != "":
 		name_text = Config.SPECIALS[sp]["name"]
 	var fs := int(c * 0.115)
@@ -435,8 +434,6 @@ func _draw_shrine(center: Vector2, c: float, idx: int, restored: bool, body: Fon
 	var bp := center + Vector2(-c * 0.3, -c * 0.18)
 	Icon.draw_icon(self, P.SEAL_SHAPES[idx], bp, c * 0.085, P.CRYSTAL_LIGHT if restored else Color(P.MOON_TEXT, 0.9))
 	draw_string(Art.heading_font(), bp + Vector2(-c * 0.06, c * 0.045), char(65 + idx), HORIZONTAL_ALIGNMENT_CENTER, c * 0.12, int(c * 0.09), P.INK)
-	if restored:
-		_tag(center + Vector2(-c * 0.2, c * 0.27), "restored", P.CRYSTAL, body, c)
 
 
 ## One prop per special room, drawn in the same thick-outline style.
