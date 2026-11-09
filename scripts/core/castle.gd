@@ -189,7 +189,7 @@ func _place_specials() -> void:
 	for r in room_count():
 		if not (r in seals) and not specials.has(r):
 			free.append(r)
-	for t in ["chapel", "library", "bell_tower", "armory"]:
+	for t in ["chapel", "bell_tower", "armory"]:
 		var r: int = free[rng.randi_range(0, free.size() - 1)]
 		free.erase(r)
 		specials[r] = t
@@ -233,6 +233,28 @@ func corrupt(count: int) -> Array:
 			if specials[r] == t:
 				corrupted[r] = true
 	return out
+
+
+## Line of sight: same room, or the same row/column within `max_rooms`, with every doorway
+## between them open (a straight corridor). Corners and closed walls block sight.
+func in_sight(from: int, to: int, max_rooms: int) -> bool:
+	if from == to:
+		return true
+	var a := pos(from)
+	var b := pos(to)
+	if a.x != b.x and a.y != b.y:
+		return false
+	var steps: int = absi(b.x - a.x) + absi(b.y - a.y)
+	if steps > max_rooms:
+		return false
+	var dir := Vector2i(signi(b.x - a.x), signi(b.y - a.y))
+	var cur := a
+	for _i in steps:
+		var nxt := cur + dir
+		if not has_door(idx(cur.x, cur.y), idx(nxt.x, nxt.y)):
+			return false
+		cur = nxt
+	return true
 
 
 func passage_exit(r: int) -> int:

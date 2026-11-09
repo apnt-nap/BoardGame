@@ -14,24 +14,21 @@ var difficulty := "normal"
 var diff: Dictionary
 
 var player_room := 0
+var start_room := 0           # where this run began (read-only; the board shows the Entry Hall there)
 var health: int = Config.MAX_HEALTH
 var noise := 0
 var token := -1               # Last Known Noise token room (-1 = off the map)
 var token_serial := 0         # bumps every time the token is placed
 var shards := 0
 var restored := [false, false, false]
-var focus: int = Config.START_FOCUS
+var redraw_ready := true      # one free redraw per run (replaces Focus); a new run = a new Game
 var treasures: Array = []
 var hero_item_ready := true
-var rune_key_ready := false
+var rune_key_ready := false   # Knight hero: once per run, an Activate may cost 1 Shard
 var search_bonus := 0
-var activate_bonus := [0, 0, 0]
 var searched: Dictionary = {}
 var used_once: Dictionary = {}
-var library_used_here := false
 var room_action_used := false
-var blessed_turns := 0
-var spirit_room := 0
 var corrupted_types: Array = []
 
 var deck: Array = []
@@ -49,6 +46,7 @@ func new_game(p_hero: String, p_difficulty: String, seed_value: int = 0, log_kni
 	hero = p_hero
 	difficulty = p_difficulty
 	diff = Config.DIFFICULTY[difficulty]
+	health = max_health()
 	if seed_value == 0:
 		rng.randomize()
 	else:
@@ -61,6 +59,7 @@ func new_game(p_hero: String, p_difficulty: String, seed_value: int = 0, log_kni
 		if not (r in castle.seals) and not castle.specials.has(r):
 			starts.append(r)
 	player_room = _pick(starts)
+	start_room = player_room
 	var dist: Array = castle.distances(player_room)
 	var far := []
 	for r in castle.room_count():
@@ -69,11 +68,6 @@ func new_game(p_hero: String, p_difficulty: String, seed_value: int = 0, log_kni
 	if far.is_empty():
 		far = [dist.find(dist.max())]
 	var knight_start: int = _pick(far)
-	var spirit_opts := []
-	for r in castle.room_count():
-		if r != player_room and r != knight_start:
-			spirit_opts.append(r)
-	spirit_room = _pick(spirit_opts)
 
 	knight = Knight.new()
 	knight.logging = log_knight
@@ -135,7 +129,17 @@ func room_name(r: int) -> String:
 
 
 func turns_left() -> int:
-	return Config.TURN_LIMIT - turn + 1
+	return turn_limit() - turn + 1
+
+
+## Turns before midnight on this difficulty.
+## Start and maximum Health on this difficulty (4 on Easy).
+func max_health() -> int:
+	return int(diff.get("health", Config.MAX_HEALTH))
+
+
+func turn_limit() -> int:
+	return int(diff.get("turns", Config.TURN_LIMIT))
 
 
 func seals_restored() -> int:
@@ -188,14 +192,24 @@ func move_options(card: String, mode: String) -> Array:
 	if mode == "sneak_move":
 		return castle.neighbors(player_room)
 	if card == "explore":
-		return rooms_within(player_room, 2) if "passage_map" in treasures else castle.neighbors(player_room)
-	if card == "dash":
 		return rooms_within(player_room, 2)
+	if card == "dash":
+		return rooms_within(player_room, 3)
 	return []
 
 
 func needs_target(card: String, mode: String) -> bool:
 	return mode == "sneak_move" or (mode == "normal" and (card == "explore" or card == "dash"))
+
+
+## Shards an Activate costs: 2, or 1 when spending the Rune Key.
+func activate_cost(use_key: bool) -> int:
+	return Config.SHARDS_PER_SEAL - 1 if use_key else Config.SHARDS_PER_SEAL
+
+
+## The Rune Key can pay for this Activate: still unused, and you hold at least 1 Shard.
+func can_use_rune_key() -> bool:
+	return rune_key_ready and shards >= activate_cost(true)
 
 
 func can_play(i: int, mode: String) -> bool:
@@ -205,15 +219,18 @@ func can_play(i: int, mode: String) -> bool:
 		return true
 	if mode == "sneak_quiet":
 		return true  # also works as "wait silently" at Noise 0
+	if mode == "rune_key":
+		# Activate paying 1 Shard with the Rune Key (optional with 2+ Shards, the only way with 1).
+		return hand[i] == "activate" and unrestored_seal_here() >= 0 and can_use_rune_key()
 	match hand[i]:
 		"explore", "dash":
 			return true
 		"search":
 			return is_searchable(player_room)
 		"activate":
-			return unrestored_seal_here() >= 0 and shards >= Config.SHARDS_PER_SEAL
+			return unrestored_seal_here() >= 0 and shards >= activate_cost(false)
 		"hide":
-			return noise > 0
+			return true  # playable at Noise 0 too: a silent wait (Noise never drops below 0)
 	return false
 
 
@@ -225,7 +242,10 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 		return false
 	discard.append_array(hand)
 	hand.clear()
-	if mode == "sneak_move":
+	if mode == "rune_key":
+		_ev("card", "Activate (Rune Key).", {"card": card})
+		_activate(true)
+	elif mode == "sneak_move":
 		_ev("card", "Sneak: you creep silently to %s." % room_name(target), {"card": card, "sneak": true})
 		_move_player(target)
 	elif mode == "sneak_quiet":
@@ -235,9 +255,6 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 		_ev("card", "%s." % Config.CARDS[card]["name"], {"card": card})
 		match card:
 			"explore":
-				if castle.distance(player_room, target) > 1:
-					treasures.erase("passage_map")
-					_ev("treasure", "The Secret Passage Map shows you a shortcut.")
 				_move_player(target)
 			"dash":
 				_move_player(target)
@@ -245,9 +262,9 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 			"search":
 				_search()
 			"activate":
-				_activate()
+				_activate(false)
 			"hide":
-				reduce_noise(1)
+				reduce_noise(2)
 	_after_player_action()
 	return true
 
@@ -255,7 +272,6 @@ func play_card(i: int, mode: String, target: int = -1) -> bool:
 func _move_player(r: int) -> void:
 	var from := player_room
 	player_room = r
-	library_used_here = false
 	_ev("move", "", {"from": from, "to": r})
 
 
@@ -266,40 +282,28 @@ func _search() -> void:
 	search_bonus = 0
 	if roll <= 1:
 		search_bonus = 1
-		_ev("dice", "Search roll %d: you knock over a candlestick! (+1 on your next Search)" % roll, {"roll": natural, "ok": false})
+		_ev("dice", "Search roll %d: you knock over a candlestick! (+1 on your next Search)" % roll, {"roll": natural, "total": roll, "ok": false})
 		add_noise(1, player_room)
 		return
 	searched[player_room] = true
-	var gain := 1 if roll <= 3 else 2
-	shards += gain
-	stats["shards"] += gain
-	_ev("dice", "Search roll %d: %d Rune Shard%s." % [roll, gain, "s" if gain > 1 else ""], {"roll": natural, "ok": true})
-	_ev("shard", "+%d Shard" % gain, {"amount": gain})
-	if roll >= 5:
+	# 2-5: 1 Shard. 6: 1 Shard and a treasure (modified roll, so a natural 5 + bonus counts).
+	shards += 1
+	stats["shards"] += 1
+	_ev("dice", "Search roll %d: 1 Rune Shard%s." % [roll, " and a treasure" if roll >= 6 else ""], {"roll": natural, "total": roll, "ok": true})
+	_ev("shard", "+1 Shard", {"amount": 1})
+	if roll >= 6:
 		_gain_treasure()
 
 
-func _activate() -> void:
+## Activation always succeeds (no roll): spend the Shards and restore the Seal.
+func _activate(use_key: bool) -> void:
 	var si := unrestored_seal_here()
-	var natural := d6()
-	var roll: int = natural + activate_bonus[si]
-	if natural == 2 and rune_key_ready and roll < 3:
-		roll = 3
+	shards -= activate_cost(use_key)
+	if use_key:
 		rune_key_ready = false
-		_ev("hero", "The Rune Key turns: the 2 counts as a 3.")
-	if roll <= 2:
-		activate_bonus[si] = 1
-		_ev("dice", "Activate roll %d: the Seal sparks and screams! (+1 on your next try here)" % roll, {"roll": natural, "ok": false})
-		add_noise(1, player_room)
-		return
-	activate_bonus[si] = 0
-	shards -= Config.SHARDS_PER_SEAL
+		_ev("hero", "The Rune Key turns: the Seal takes only 1 Shard.")
 	restored[si] = true
-	focus += 1
-	_ev("dice", "Activate roll %d: Seal %s is restored!" % [mini(roll, 6), char(65 + si)], {"roll": natural, "ok": true})
-	_ev("seal", "Seal %s restored. +1 Focus." % char(65 + si), {"seal": si})
-	if roll >= 6 and noise > 0:
-		reduce_noise(1)
+	_ev("seal", "Seal %s restored." % Config.SEAL_NAMES[si], {"seal": si})
 	_on_seal_restored()
 
 
@@ -320,6 +324,9 @@ func _on_seal_restored() -> void:
 		for t in corrupted_types:
 			names.append(Config.SPECIALS[t]["name"])
 		_ev("corrupt", "Darkness spreads: the %s fall silent." % " and ".join(PackedStringArray(names)), {"types": corrupted_types})
+	# 1st/2nd Seal: a signal at the Seal's room (post-shift map). The Knight acts on it on its next turn.
+	knight.receive_signal(player_room)
+	_ev("signal", "The Seal sends a signal. The Knight is drawn to this room.", {"room": player_room})
 	knight._compute_plan()
 
 
@@ -341,9 +348,7 @@ func room_action() -> String:
 	var t: String = castle.special_at(player_room)
 	match t:
 		"chapel":
-			return t if not used_once.has(t) and health < Config.MAX_HEALTH else ""
-		"library":
-			return t if not library_used_here else ""
+			return t if not used_once.has(t) and health < max_health() else ""
 		"bell_tower", "armory":
 			return t if not used_once.has(t) else ""
 		"passage":
@@ -361,13 +366,6 @@ func do_room_action() -> bool:
 			used_once[t] = true
 			health += 1
 			_ev("heal", "The Chapel's candles warm you. +1 Health.")
-		"library":
-			library_used_here = true
-			var step: int = knight.next_step()
-			var moves: bool = knight.next_roll >= diff["move_min"] and step != knight.room
-			var text := "The Knight's journal: it is %s and its next die shows %d. " % [knight.state, knight.next_roll]
-			text += ("If nothing changes it moves to %s." % room_name(step)) if moves else "If nothing changes it stays put."
-			_ev("library", text, {"room": step if moves else knight.room})
 		"bell_tower":
 			used_once[t] = true
 			token = player_room
@@ -393,8 +391,6 @@ func can_use_treasure(t: String) -> bool:
 			return noise > 0
 		"ration":
 			return health == 1
-		"spirit_bell":
-			return phase == "player"
 	return false
 
 
@@ -410,21 +406,7 @@ func use_treasure(i: int) -> bool:
 		"ration":
 			health += 1
 			_ev("heal", "You eat the Emergency Ration. +1 Health.")
-		"spirit_bell":
-			_push_spirit()
 	return true
-
-
-func _push_spirit() -> void:
-	var best: int = spirit_room
-	var best_d := -1
-	var dist: Array = castle.distances(player_room)
-	for r in rooms_within(spirit_room, 2):
-		if dist[r] > best_d:
-			best_d = dist[r]
-			best = r
-	spirit_room = best
-	_ev("spirit", "The Spirit Bell chimes and the Spirit drifts away to %s." % room_name(best))
 
 
 func hero_item() -> String:
@@ -435,10 +417,10 @@ func can_use_hero_item() -> bool:
 	if not hero_item_ready or (phase != "player" and phase != "encounter"):
 		return false
 	match hero_item():
-		"lantern", "blessing":
+		"lantern":
 			return phase == "player"
 		"potion":
-			return health < Config.MAX_HEALTH  # in an encounter you still RUN or HIDE afterwards
+			return health < max_health()  # in an encounter you still RUN or HIDE afterwards
 		"silence":
 			return noise > 0 and phase == "player"
 	return false
@@ -458,24 +440,22 @@ func use_hero_item() -> bool:
 		"silence":
 			reduce_noise(2)
 			_ev("hero", "The Silence Scroll crumbles. Every echo dies.")
-		"blessing":
-			blessed_turns = Config.SPIRIT_BLESS_TURNS
-			_ev("hero", "A Blessing settles on you. The Spirit cannot betray you for %d turns." % blessed_turns)
 	return true
 
 
-func can_focus() -> bool:
-	return phase == "player" and focus > 0
+## One optional free redraw per run, before you play the turn's card. Costs no turn.
+func can_redraw() -> bool:
+	return phase == "player" and redraw_ready and hand.size() == 2
 
 
-func focus_redraw() -> bool:
-	if not can_focus():
+func redraw_hand() -> bool:
+	if not can_redraw():
 		return false
-	focus -= 1
+	redraw_ready = false
 	discard.append_array(hand)
 	hand.clear()
 	_draw_hand()
-	_ev("focus", "You steady your nerves and redraw.")
+	_ev("redraw", "You steady your nerves and redraw. Your one redraw this run is used.")
 	return true
 
 
@@ -490,8 +470,8 @@ func _after_player_action() -> void:
 
 func _senses() -> Dictionary:
 	# The Knight only knows where you are if it hears you (Noise at the hunt threshold)
-	# or sees you within `sight` doorways. Nothing else about you is passed in.
-	var seen: bool = castle.distance(knight.room, player_room) <= diff["sight"]
+	# or sees you down a straight corridor of open doorways, up to `sight` rooms away.
+	var seen: bool = castle.in_sight(knight.room, player_room, diff["sight"])
 	return {
 		"noise": noise,
 		"token": token,
@@ -501,19 +481,8 @@ func _senses() -> Dictionary:
 	}
 
 
+## After the player's action (and the victory check), the Cursed Knight acts.
 func _world_phase() -> void:
-	# Wandering Spirit drifts one room.
-	var nbs: Array = castle.neighbors(spirit_room)
-	var from_s := spirit_room
-	spirit_room = _pick(nbs)
-	_ev("spirit_move", "", {"from": from_s, "to": spirit_room})
-	if spirit_room == player_room:
-		if blessed_turns > 0:
-			_ev("spirit", "The Wandering Spirit circles you but the Blessing keeps it quiet.")
-		else:
-			_ev("shriek", "The Wandering Spirit finds you and SHRIEKS!")
-			add_noise(1, player_room)
-	# Cursed Knight.
 	var from_k: int = knight.room
 	var walk: Array = knight.begin_turn(_senses())
 	var walked := []
@@ -533,10 +502,8 @@ func _world_phase() -> void:
 
 
 func _end_turn() -> void:
-	if blessed_turns > 0:
-		blessed_turns -= 1
 	turn += 1
-	if turn > Config.TURN_LIMIT:
+	if turn > turn_limit():
 		_lose("Midnight strikes. The curse sets like stone, and so do you.")
 		return
 	room_action_used = false
@@ -624,12 +591,7 @@ func resolve_encounter(choice: String) -> bool:
 
 
 func _flee_room() -> int:
-	var opts: Array = castle.neighbors(player_room)
-	var safe := []
-	for r in opts:
-		if r != spirit_room:
-			safe.append(r)
-	return _pick(safe if not safe.is_empty() else opts)
+	return _pick(castle.neighbors(player_room))
 
 
 func _damage(text: String) -> void:
@@ -642,3 +604,137 @@ func _damage(text: String) -> void:
 	_ev("damage", "%s -1 Health." % text)
 	if health <= 0:
 		_lose("The Cursed Knight claims another soul for Blackthorn Keep.")
+
+
+# ------------------------------------------------------------------ read-only previews (UI)
+# Nothing below changes state or touches the RNG. The UI uses these to explain an action
+# before it is confirmed. They only use public information: never the Knight's pre-rolled die,
+# its random Search pick or its Patrol route.
+
+## Lowest natural die that keeps an encounter HIDE safe on this difficulty.
+func hide_safe_min() -> int:
+	return 5 if diff["checks_hiding"] else 4
+
+
+## Why card `i` cannot be played in `mode` right now ("" = it can, or it is not your turn).
+func why_not(i: int, mode: String) -> String:
+	if phase != "player" or i < 0 or i >= hand.size() or can_play(i, mode):
+		return ""
+	var card: String = hand[i]
+	var si: int = castle.seal_index(player_room)
+	if mode == "rune_key":
+		if not rune_key_ready:
+			return "The Rune Key is already used."
+		if si < 0:
+			return "Stand on an unrestored Seal."
+		if restored[si]:
+			return "This Seal is already restored."
+		return "Needs 1 Shard (you have %d)." % shards
+	match card:
+		"search":
+			if si >= 0:
+				return "You can't search a Seal room."
+			return "This room was already searched."
+		"activate":
+			if si < 0:
+				return "Stand on an unrestored Seal."
+			if restored[si]:
+				return "This Seal is already restored."
+			return "Needs %d Shards (you have %d)." % [activate_cost(false), shards]
+	return ""
+
+
+## What playing card `i` in `mode` (to `target` for moves; -1 = not chosen yet) would do.
+## {"will": [certain results], "warn": [certain dangers], "might": [dice and the Knight's move]}
+func preview(i: int, mode: String, target: int = -1) -> Dictionary:
+	var out := {"will": [], "warn": [], "might": []}
+	if phase != "player" or i < 0 or i >= hand.size():
+		return out
+	var card: String = hand[i]
+	var hunt_at: int = diff["hunt_at"]
+	var new_noise := noise
+	var end_room := player_room
+	if needs_target(card, mode):
+		if target < 0:
+			out["will"].append("Choose a highlighted room.")
+		else:
+			end_room = target
+			var d: int = castle.distance(player_room, target)
+			out["will"].append("Move to %s (%d room%s)%s." % [room_name(target), d, "" if d == 1 else "s", ", silently" if card != "dash" or mode == "sneak_move" else ""])
+			if card == "dash" and mode == "normal":
+				new_noise = mini(Config.MAX_NOISE, noise + 1)
+				out["will"].append("Noise %d -> %d. The marker lands in %s." % [noise, new_noise, room_name(target)])
+	elif mode == "sneak_quiet" or (mode == "normal" and card == "hide"):
+		new_noise = maxi(0, noise - (1 if mode == "sneak_quiet" else 2))
+		if noise == 0:
+			out["will"].append("Stay here and wait silently. Noise stays 0.")
+		else:
+			out["will"].append("Stay here. Noise %d -> %d." % [noise, new_noise])
+		if noise >= hunt_at and new_noise < hunt_at:
+			out["will"].append("It loses your sound and will check where you are now.")
+	elif card == "search" and mode == "normal":
+		var bonus := search_bonus
+		var fail_max := 1 - bonus        # natural rolls up to this fail
+		var treasure_min := 6 - bonus    # natural rolls from this also give a treasure
+		if bonus > 0:
+			out["will"].append("Search +1 ready: this roll can't fail.")
+		else:
+			var fail_noise := mini(Config.MAX_NOISE, noise + 1)
+			out["might"].append("Die 1: fail. Noise %d -> %d, marker here, the room stays searchable, next Search +1." % [noise, fail_noise])
+			if fail_noise >= hunt_at and noise < hunt_at:
+				out["warn"].append("On a 1 the Knight will hear you.")
+		out["might"].append("Die %d-%d: 1 Shard." % [fail_max + 1, treasure_min - 1])
+		out["might"].append("Die %s: 1 Shard and a treasure." % (str(treasure_min) if treasure_min == 6 else "%d-6" % treasure_min))
+		if treasures.size() >= Config.MAX_TREASURES:
+			out["warn"].append("Pack full: a treasure found now is lost.")
+	elif card == "activate" and (mode == "normal" or mode == "rune_key"):
+		var si := unrestored_seal_here()
+		var cost := activate_cost(mode == "rune_key")
+		out["will"].append("Spend %d Shard%s (you have %d). Seal %s is restored." % [cost, "" if cost == 1 else "s", shards, Config.SEAL_NAMES[maxi(si, 0)]])
+		if seals_restored() == 2:
+			out["will"].append("This is the third Seal: you win.")
+			return out
+		out["will"].append("A doorway shifts somewhere in the Keep.")
+		if seals_restored() == 1:
+			out["will"].append("Two special rooms will be corrupted.")
+		out["warn"].append("Signal: the Knight is drawn to this room.")
+	if new_noise >= hunt_at:
+		out["warn"].append("The Knight will hear you and know your room.")
+	elif new_noise == hunt_at - 1 and new_noise > noise:
+		out["warn"].append("1 more Noise and it hears you.")
+	if diff["sight"] > 0 and end_room != knight.room and castle.in_sight(knight.room, end_room, diff["sight"]):
+		out["warn"].append("It can see %s from where it stands." % ("this room" if end_room == player_room else room_name(end_room)))
+	if end_room == knight.room:
+		out["warn"].append("The Knight is in that room.")
+	if knight.skip_turns > 0:
+		out["might"].append("The Knight is stunned and loses its next turn.")
+	elif knight.fixed_move() or knight.signal_room >= 0:
+		out["might"].append("Then the Knight moves (it moves every turn on %s)." % diff["name"] if knight.fixed_move() else "Then the Knight moves toward the signal.")
+	else:
+		out["might"].append("Then the Knight moves on a die roll of %d-6." % diff["move_min"])
+	return out
+
+
+## What the player can know about the Knight's intent. `arrow` is true only when its target is
+## public: you (Hunt), the noise marker on the map, or a Seal signal.
+func knight_public() -> Dictionary:
+	var k = knight
+	var out := {"kind": "patrol", "text": "Patrolling the Seals.", "arrow": false}
+	match k.state:
+		"HUNT":
+			out = {"kind": "hear", "text": "It can hear you. It knows your room.", "arrow": true} if k.charging else {"kind": "see", "text": "It can see you.", "arrow": true}
+		"INVESTIGATE":
+			if k.signal_room >= 0 and k.target == k.signal_room:
+				var si: int = castle.seal_index(k.signal_room)
+				out = {"kind": "signal", "text": "Drawn to the signal at %s." % ("Seal " + Config.SEAL_NAMES[si] if si >= 0 else room_name(k.signal_room)), "arrow": true}
+			elif token >= 0 and k.target == token:
+				out = {"kind": "marker", "text": "Investigating the noise marker in %s." % room_name(token), "arrow": true}
+			else:
+				out = {"kind": "memory", "text": "Heading to where it last heard you.", "arrow": false}
+		"SEARCH":
+			out = {"kind": "search", "text": "Searching the rooms around %s." % room_name(k.search_center), "arrow": false}
+	if k.skip_turns > 0:
+		out["kind"] = "stunned"
+		out["text"] = "Stunned: it loses its next turn."
+		out["arrow"] = false
+	return out

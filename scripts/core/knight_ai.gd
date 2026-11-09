@@ -27,12 +27,13 @@ var search_left := 0
 var search_pick := -1
 var search_checked: Dictionary = {}
 var skip_turns := 0
-var next_roll := 1          # pre-rolled so the Library can reveal it honestly
+var next_roll := 1          # pre-rolled at the end of its previous turn (kept so the AI and RNG order are unchanged)
 var last_roll := 0          # the die it used this turn (0 = it did not roll)
 var plan: Array = []        # planned path for intent cues and the debug overlay
 var reason := ""
 var charging := false
 var stunned_now := false    # lost this turn to the Lantern: no move, no encounter       # hunting because of loud Noise (moves hunt_steps) vs. stalking by sight
+var signal_room := -1      # Seal signal it is drawn to (-1 = none); set when the 1st/2nd Seal is restored
 var turn_no := 0
 var logging := true
 var log_lines: Array = []
@@ -44,7 +45,8 @@ func setup(p_castle, p_diff: Dictionary, p_rng: RandomNumberGenerator, start_roo
 	rng = p_rng
 	room = start_room
 	rebuild_patrol(restored)
-	next_roll = rng.randi_range(1, 6)
+	if not fixed_move():
+		next_roll = rng.randi_range(1, 6)
 	_compute_plan()
 	reason = "Begins its patrol of the Seals"
 
@@ -76,6 +78,7 @@ func update_state(s: Dictionary) -> void:
 	var hunt_at: int = diff["hunt_at"]
 	if s["player_room"] >= 0:
 		state = HUNT
+		signal_room = -1  # detection beats the Seal signal; afterwards normal Hunt/memory rules apply
 		target = s["player_room"]
 		memory_left = diff["memory"]
 		handled_serial = s["token_serial"]
@@ -84,6 +87,16 @@ func update_state(s: Dictionary) -> void:
 			reason = "Noise %d >= %d: it hears you clearly and charges %s" % [s["noise"], hunt_at, room_name(target)]
 		else:
 			reason = "It glimpses you through the doorway at %s and stalks closer" % room_name(target)
+	elif signal_room >= 0:
+		# The Seal signal overrides noise investigation, memory pursuit, Search and Patrol.
+		if room == signal_room:
+			signal_room = -1
+			_start_search(room)
+			reason = "At the signalled Seal in %s: nobody. Starts searching" % room_name(room)
+		else:
+			state = INVESTIGATE
+			target = signal_room
+			reason = "Drawn to the Seal signal at %s" % room_name(target)
 	elif s["token"] >= 0 and s["token_serial"] != handled_serial:
 		if state == INVESTIGATE and target == s["token"]:
 			reason = "Still heading for the noise at %s" % room_name(target)
@@ -144,26 +157,59 @@ func _compute_plan() -> void:
 func begin_turn(s: Dictionary) -> Array:
 	turn_no += 1
 	update_state(s)
+	var sig := following_signal()
+	var fixed := fixed_move() or sig  # following a Seal signal never uses the movement die
 	var roll := next_roll
 	last_roll = 0
-	next_roll = rng.randi_range(1, 6)
+	if not fixed:
+		next_roll = rng.randi_range(1, 6)
 	stunned_now = skip_turns > 0
 	if skip_turns > 0:
 		skip_turns -= 1
 		log_event("Dazzled by the Lantern: loses its turn in %s" % room_name(room))
 		return []
 	var need: int = diff["move_min"]
-	last_roll = roll
-	if roll < need:
-		log_event("Rolled %d (needs %d+): stays in %s. %s" % [roll, need, room_name(room), reason])
-		return []
-	var steps: int = diff["hunt_steps"] if state == HUNT and charging else 1
+	if not fixed:
+		last_roll = roll
+		if roll < need:
+			log_event("Rolled %d (needs %d+): stays in %s. %s" % [roll, need, room_name(room), reason])
+			return []
+	# Hunting by hearing (Noise at the threshold) moves hunt_steps, even if it also sees you.
+	# Sight-only hunts, memory pursuit (INVESTIGATE), Patrol and Search move 1 room.
+	# A Seal signal is followed 2 rooms per turn on every difficulty.
+	var steps: int = 2 if sig else (diff["hunt_steps"] if state == HUNT and charging else 1)
 	var walk := plan.slice(0, steps)
+	var head: String = "Moves" if fixed else "Rolled %d (needs %d+): moves" % [roll, need]
 	if walk.is_empty():
-		log_event("Rolled %d: no path, waits in %s. %s" % [roll, room_name(room), reason])
+		log_event("%s: no path, waits in %s. %s" % ["Holds" if fixed else "Rolled %d" % roll, room_name(room), reason])
 	else:
-		log_event("Rolled %d (needs %d+): moves %s -> %s. %s" % [roll, need, room_name(room), room_name(walk.back()), reason])
+		log_event("%s %s -> %s. %s" % [head, room_name(room), room_name(walk.back()), reason])
 	return walk
+
+
+## A restored Seal (1st or 2nd) signals its room. It replaces any older signal. The Knight acts
+## on it only during its next normal turn (see update_state / begin_turn).
+func receive_signal(r: int) -> void:
+	signal_room = r
+	if state != HUNT and room != r:
+		state = INVESTIGATE
+		target = r
+		reason = "Drawn to the Seal signal at %s" % room_name(r)
+	log_event("Senses the Seal signal at %s" % room_name(r))
+
+
+func following_signal() -> bool:
+	return signal_room >= 0 and state == INVESTIGATE and target == signal_room
+
+
+## Normal difficulty: no movement die. The Knight always moves (unless stunned).
+func fixed_move() -> bool:
+	return diff.get("fixed_move", false)
+
+
+## True if the Knight will move on its next turn when not stunned (always on Normal).
+func will_move_next() -> bool:
+	return fixed_move() or signal_room >= 0 or next_roll >= diff["move_min"]
 
 
 func step_to(r: int) -> void:
@@ -175,9 +221,15 @@ func step_to(r: int) -> void:
 ## End of the Knight's move. `found` = it shares a room with the player.
 func end_turn(found: bool) -> void:
 	if found:
+		signal_room = -1  # it has found you: the signal is spent
 		log_event("Found the intruder in %s!" % room_name(room))
 		return
-	if state == INVESTIGATE and room == target:
+	if following_signal() and room == target:
+		signal_room = -1
+		_start_search(room)
+		reason = "Reached the signalled Seal at %s: nobody. Starts searching" % room_name(room)
+		log_event(reason)
+	elif state == INVESTIGATE and room == target:
 		handled_serial = maxi(handled_serial, target_serial)
 		_start_search(room)
 		reason = "Reached the noise at %s: nobody. Starts searching" % room_name(room)
@@ -209,7 +261,7 @@ func room_name(r: int) -> String:
 
 func seal_letter(r: int) -> String:
 	var i: int = castle.seal_index(r)
-	return char(65 + i) if i >= 0 else "?"
+	return Config.SEAL_NAMES[i] if i >= 0 else "?"
 
 
 func debug_lines() -> Array:
@@ -221,7 +273,8 @@ func debug_lines() -> Array:
 		"Room: %s   Target: %s" % [room_name(room), room_name(target)],
 		"Memory left: %d   Search left: %d" % [memory_left, search_left],
 		"Handled noise #%d   Skip: %d" % [handled_serial, skip_turns],
-		"Next D6 (pre-rolled): %d (moves on %d+)" % [next_roll, diff["move_min"]],
+		"Moves every turn (no die)" if fixed_move() else "Next D6 (pre-rolled): %d (moves on %d+)" % [next_roll, diff["move_min"]],
+		"Seal signal: %s" % room_name(signal_room),
 		"Plan: %s" % (" > ".join(PackedStringArray(names)) if not names.is_empty() else "(stay)"),
 		"Why: %s" % reason,
 	]

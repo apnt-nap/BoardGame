@@ -18,7 +18,6 @@ const SYNTH := {
 	"encounter": [[110.0, 104.0, 98.0], 0.5, "square"],
 	"damage": [[90.0, 60.0], 0.35, "noise"],
 	"seal": [[523.0, 659.0, 784.0, 1046.0], 0.5, "sine"],
-	"shriek": [[1400.0, 1100.0, 1500.0], 0.35, "sine"],
 	"shift": [[60.0, 55.0], 0.6, "noise"],
 	"heal": [[392.0, 523.0, 659.0], 0.35, "sine"],
 	"bell": [[330.0, 331.5], 1.2, "sine"],
@@ -30,6 +29,7 @@ const SYNTH := {
 var _cache := {}
 var _players: Array = []
 var muted := false
+var volume := 0.8   # 0..1, set from Settings
 
 
 func _ready() -> void:
@@ -46,6 +46,9 @@ func play(name: String) -> void:
 	var stream: AudioStream = _get_stream(name)
 	if stream == null:
 		return
+	var db := linear_to_db(maxf(volume, 0.001)) - 6.0
+	for p in _players:
+		p.volume_db = db
 	for p in _players:
 		if not p.playing:
 			p.stream = stream

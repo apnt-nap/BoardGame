@@ -45,24 +45,20 @@ func _free_actions(g) -> void:
 	# Hero item.
 	match g.hero_item():
 		"potion":
-			if g.health <= 1 or (g.health < Config.MAX_HEALTH and g.turns_left() < 6):
+			if g.health <= 1 or (g.health < g.max_health() and g.turns_left() < 6):
 				g.use_hero_item()
 		"lantern":
-			if kd <= 1 and g.knight.next_roll >= g.diff["move_min"]:
+			if kd <= 1 and g.knight.will_move_next():
 				g.use_hero_item()
 		"silence":
 			if g.noise >= hunt_at:
 				g.use_hero_item()
-		"blessing":
-			g.use_hero_item()
 	# Treasures.
 	for i in range(g.treasures.size() - 1, -1, -1):
 		var t: String = g.treasures[i]
 		if t == "ward_charm" and g.noise >= hunt_at - 1:
 			g.use_treasure(i)
 		elif t == "ration" and g.health == 1:
-			g.use_treasure(i)
-		elif t == "spirit_bell" and g.castle.distance(g.player_room, g.spirit_room) <= 1:
 			g.use_treasure(i)
 	# Room feature.
 	var ra: String = g.room_action()
@@ -78,15 +74,15 @@ func _free_actions(g) -> void:
 			if (kd <= 2 and g.castle.distance(exit, g.knight.room) > kd) or \
 					(goal >= 0 and g.castle.distance(exit, goal) + 1 < g.castle.distance(g.player_room, goal)):
 				g.do_room_action()
-	# Focus: redraw a useless hand.
-	if g.can_focus() and not _hand_useful(g):
-		g.focus_redraw()
+	# The one free redraw per run: swap a useless hand.
+	if g.can_redraw() and not _hand_useful(g):
+		g.redraw_hand()
 
 
 func _hand_useful(g) -> bool:
 	for i in g.hand.size():
 		var c: String = g.hand[i]
-		if c == "activate" and g.can_play(i, "normal"):
+		if c == "activate" and (g.can_play(i, "normal") or g.can_play(i, "rune_key")):
 			return true
 		if c == "search" and g.can_play(i, "normal") and g.shards < _shards_needed(g):
 			return true
@@ -94,7 +90,12 @@ func _hand_useful(g) -> bool:
 
 
 func _shards_needed(g) -> int:
-	return (3 - g.seals_restored()) * Config.SHARDS_PER_SEAL
+	return (3 - g.seals_restored()) * Config.SHARDS_PER_SEAL - (1 if g.rune_key_ready else 0)
+
+
+## Enough Shards to restore one Seal right now (1 with an unused Rune Key).
+func _can_afford_seal(g) -> bool:
+	return g.shards >= Config.SHARDS_PER_SEAL or g.can_use_rune_key()
 
 
 ## Where the bot wants to go: nearest unrestored Seal if it has shards, else nearest searchable room.
@@ -102,7 +103,7 @@ func _goal(g) -> int:
 	var dist: Array = g.castle.distances(g.player_room)
 	var best := -1
 	var best_d := 999
-	if g.shards >= Config.SHARDS_PER_SEAL:
+	if _can_afford_seal(g):
 		for i in 3:
 			var s: int = g.castle.seals[i]
 			if g.restored[i]:
@@ -135,12 +136,16 @@ func _best_step(g, options: Array, goal: int) -> int:
 	var best_score := 99999.0
 	for r in options:
 		var score: float = g.castle.distance(r, goal) * 1.0 + _danger(g, r)
-		if r == g.spirit_room:
-			score += 0.5
 		if score < best_score:
 			best_score = score
 			best = r
 	return best
+
+
+## Somewhere to wander when there is no goal: the room farthest from the Knight.
+func _far_from_knight(g) -> int:
+	var dist: Array = g.castle.distances(g.knight.room)
+	return dist.find(dist.max())
 
 
 func _find(g, card: String) -> int:
@@ -165,10 +170,14 @@ func _choose_card(g) -> Dictionary:
 	var a := _find(g, "activate")
 	if a >= 0 and kd >= 1:
 		return {"i": a, "mode": "normal", "target": -1}
+	# With 1 Shard, the Rune Key is the only way to activate.
+	for i in g.hand.size():
+		if g.hand[i] == "activate" and g.can_play(i, "rune_key") and kd >= 1:
+			return {"i": i, "mode": "rune_key", "target": -1}
 	# 3. Need shards and this room is searchable.
 	var s := _find(g, "search")
 	if s >= 0 and g.shards < _shards_needed(g) and (kd >= 2 or g.noise <= hunt_at - 2) and \
-			(g.shards < Config.SHARDS_PER_SEAL or g.unrestored_seal_here() < 0):
+			(not _can_afford_seal(g) or g.unrestored_seal_here() < 0):
 		return {"i": s, "mode": "normal", "target": -1}
 	# 5. Move toward the goal, away from the Knight when it is close.
 	# 4. Already where it wants to be but holding the wrong cards: wait quietly.
@@ -176,7 +185,7 @@ func _choose_card(g) -> Dictionary:
 		var h2 := _find(g, "hide")
 		return {"i": h2 if h2 >= 0 else 0, "mode": "normal" if h2 >= 0 else "sneak_quiet", "target": -1}
 	if goal < 0 or goal == g.player_room:
-		goal = g.spirit_room if goal < 0 else goal
+		goal = _far_from_knight(g) if goal < 0 else goal
 	var dist_goal: int = g.castle.distance(g.player_room, goal)
 	var d := _find(g, "dash")
 	if d >= 0 and dist_goal >= 2 and g.noise + 1 < hunt_at - 1 and kd >= 3:

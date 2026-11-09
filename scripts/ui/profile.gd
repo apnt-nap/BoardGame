@@ -40,9 +40,8 @@ func hero_unlocked(hero: String) -> bool:
 		"knight":
 			return wins_by_diff["normal"] >= 1 or wins_by_diff["hard"] >= 1
 		"thief":
+			# Old saves may list "priest" (removed hero); its wins still count as a different hero.
 			return heroes_won.size() >= 3
-		"priest":
-			return wins_by_diff["hard"] >= 1
 	return true
 
 
