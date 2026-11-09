@@ -37,6 +37,14 @@ const CROPS := {
 	"parchment":        [304, 0, Rect2i(170, 170, 2577, 1760), 1400],
 	"menu_bg":          [49, 0, Rect2i(), 1600],
 	"title_bg":         [33, 0, Rect2i(), 1600],
+	# Asia's extra art (transparent PNGs), copied into build/ref_user/. Three tiles / four shrines per sheet.
+	"room_floor_plain":     ["room_tiles", 0, Rect2i(0, 0, 724, 724), 400],
+	"room_floor_desk":      ["room_tiles", 0, Rect2i(724, 0, 724, 724), 400],
+	"room_floor_barrels":   ["room_tiles", 0, Rect2i(1448, 0, 724, 724), 400],
+	"seal_shrine_a":        ["seal_shrines", 0, Rect2i(0, 0, 543, 724), 360],
+	"seal_shrine_b":        ["seal_shrines", 0, Rect2i(543, 0, 543, 724), 360],
+	"seal_shrine_c":        ["seal_shrines", 0, Rect2i(1086, 0, 543, 724), 360],
+	"seal_shrine_restored": ["seal_shrines", 0, Rect2i(1629, 0, 543, 724), 360],
 }
 
 
@@ -46,7 +54,7 @@ func _init() -> void:
 	var made := []
 	for name in CROPS:
 		var spec: Array = CROPS[name]
-		var key := "%d_%d" % [spec[0], spec[1]]
+		var key := "%s_%d" % [str(spec[0]), spec[1]]
 		if not cache.has(key):
 			cache[key] = _load(spec[0], spec[1])
 		var src: Image = cache[key]
@@ -56,13 +64,14 @@ func _init() -> void:
 		if rect.size == Vector2i.ZERO:
 			rect = Rect2i(Vector2i.ZERO, src.get_size())
 		var img := src.get_region(rect.intersection(Rect2i(Vector2i.ZERO, src.get_size())))
-		if spec[1] != 0:
+		var has_alpha := img.detect_alpha() != Image.ALPHA_NONE
+		if has_alpha:
 			img = _trim(img)
 		var longest := maxi(img.get_width(), img.get_height())
 		if longest > spec[3]:  # downsize only, never upscale
 			var s := float(spec[3]) / longest
 			img.resize(roundi(img.get_width() * s), roundi(img.get_height() * s), Image.INTERPOLATE_LANCZOS)
-		if spec[1] == 0:
+		if not has_alpha:
 			img.convert(Image.FORMAT_RGB8)
 		img.save_png(OUT % name)
 		made.append([name, img])
@@ -72,10 +81,12 @@ func _init() -> void:
 	quit()
 
 
-func _load(id: int, mask_id: int) -> Image:
-	var img := Image.load_from_file(SRC % id)
+## id: a mutool object number (build/ref_images/) or a file name in build/ref_user/.
+func _load(id, mask_id: int) -> Image:
+	var path: String = SRC % id if id is int else "res://build/ref_user/%s.png" % id
+	var img := Image.load_from_file(path)
 	if img == null:
-		push_error("Missing " + SRC % id)
+		push_error("Missing " + path)
 		return null
 	img.convert(Image.FORMAT_RGBA8)
 	if mask_id != 0:
