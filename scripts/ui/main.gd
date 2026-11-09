@@ -1469,11 +1469,6 @@ func _clear_selection() -> void:
 func _on_card_clicked(i: int) -> void:
 	if not _can_act():
 		return
-	if sneak_mode != "":
-		var m := sneak_mode
-		sneak_mode = ""
-		_on_card(i, m)
-		return
 	_on_card(i, "normal")
 
 
@@ -1508,17 +1503,12 @@ func _on_card(i: int, mode: String) -> void:
 	_play(i, mode, -1)
 
 
+## Sneak spends the whole hand like any play (both cards are discarded), so which card is
+## "spent" makes no difference: the buttons act at once on the first card, with no card pick.
 func _on_sneak(mode: String) -> void:
-	if not _can_act():
+	if not _can_act() or game.hand.is_empty():
 		return
-	if not pending.is_empty() and pending["mode"] == "normal":
-		var i: int = pending["i"]
-		_clear_selection()
-		_on_card(i, mode)
-		return
-	_clear_selection()
-	sneak_mode = mode
-	_refresh()
+	_on_card(0, mode)
 
 
 func _confirm() -> void:
@@ -1787,8 +1777,8 @@ func _refresh_card(i: int, act: bool) -> void:
 	var key_ok: bool = c == "activate" and game.rune_key_ready
 	cui["key"].visible = key_ok
 	cui["key"].disabled = not act or not game.can_play(i, "rune_key")
-	var selected: bool = not pending.is_empty() and pending["i"] == i
-	var sneaking: bool = sneak_mode != ""
+	var sneaking: bool = not pending.is_empty() and pending["mode"].begins_with("sneak")
+	var selected: bool = not pending.is_empty() and pending["i"] == i and not sneaking
 	var border: Color = P.AMBER if selected else (P.CRYSTAL_LIGHT if sneaking else P.GOLD)
 	var bw := 6 if selected or sneaking else 4
 	var fill: Color = P.PARCHMENT if (playable or sneaking) else P.PARCHMENT_DARK
@@ -1813,23 +1803,23 @@ func _refresh_preview() -> void:
 		txt = "[b]%s[/b]" % game.end_reason
 	elif busy:
 		txt = "[color=%s]The Keep stirs...[/color]\n" % dim + _recent_text()
-	elif sneak_mode != "":
-		txt = "[b]Sneak:[/b] %s\nPick the card to spend. Its own effect does not happen." % ("move 1 room silently." if sneak_mode == "sneak_move" else "stay here and lower Noise by 1.")
-		show_buttons = true
 	elif not pending.is_empty():
 		var i: int = pending["i"]
 		var mode: String = pending["mode"]
 		var card: String = game.hand[i]
 		var cname: String = Config.CARDS[card]["name"]
 		var head := cname
+		var spend := "uses this card, discards the other"
 		if mode == "sneak_move":
-			head = "Sneak (move) with %s" % cname
+			head = "Sneak: move 1 room silently"
+			spend = "discards both cards"
 		elif mode == "sneak_quiet":
-			head = "Sneak (stay) with %s" % cname
+			head = "Sneak: stay, Noise -1"
+			spend = "discards both cards"
 		elif mode == "rune_key":
 			head = "Activate with the Rune Key"
 		var p: Dictionary = game.preview(i, mode, hover_target if game.needs_target(card, mode) else -1)
-		txt = "[b]%s[/b]  [color=%s]uses this card, discards the other[/color]\n" % [head, dim]
+		txt = "[b]%s[/b]  [color=%s]%s[/color]\n" % [head, dim, spend]
 		for l in p["will"]:
 			txt += "%s\n" % l
 		for l in p["warn"]:

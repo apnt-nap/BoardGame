@@ -54,7 +54,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 | Activate | 4 | On an unrestored Seal: spend 2 Shards and the Seal is restored. No roll, it always works. |
 | Hide | 2 | Stay. Noise −2, never below 0 (playable at Noise 0 as a silent wait). |
 
-- **Sneak:** any card can be played face-down to *move 1 room silently* or to *keep still* (Noise −1).
+- **Sneak:** instead of a card's action, press a Sneak button to *move 1 room silently* or to *keep still* (Noise −1). Your hand is discarded as on any turn, so there is no card to pick.
   You never have a dead turn.
 - **Misses build up:** a failed Search gives +1 to your next Search (used up on that roll, never more than +1; the result is capped at 6).
 - **Free redraw:** once per run, before you play your card, discard both cards and draw 2 new ones. It costs no turn.
