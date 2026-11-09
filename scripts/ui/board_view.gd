@@ -50,8 +50,12 @@ func origin() -> Vector2:
 func room_rect(r: int) -> Rect2:
 	var c := cell()
 	var p := Vector2(r % 5, r / 5) * c + origin()
-	var pad := c * 0.035
+	var pad := 0.0 if _board_art() else c * 0.035  # painted cells share their walls
 	return Rect2(p + Vector2(pad, pad), Vector2(c - pad * 2, c - pad * 2))
+
+
+func _board_art() -> bool:
+	return Art.tex(P.BOARD_SEAL_RING[0]) != null and Art.tex("wall_h_solid") != null
 
 
 func room_center(r: int) -> Vector2:
@@ -176,9 +180,10 @@ func _draw() -> void:
 	_round_rect(grid.grow(c * 0.04), P.STONE_DARK, c * 0.08)
 	_round_rect(grid.grow(c * 0.04), P.INK, c * 0.08, false, 4.0)
 
-	# Doorways: wooden-floor corridors under the rooms, with ink edges.
+	# Doorways: wooden-floor corridors under the rooms, with ink edges (old look only).
 	var w := room_rect(0).size.x * 0.125
-	for r in 25:
+	var painted := _board_art()
+	for r in (0 if painted else 25):
 		for g in castle.neighbors(r):
 			if g > r:
 				var a := room_center(r)
@@ -188,6 +193,10 @@ func _draw() -> void:
 				draw_rect(rect.grow(-2.0), P.DOORWAY)
 
 	var kp_info: Dictionary = game.knight_public()
+	if painted:
+		for r in 25:
+			_draw_board_cell(r)
+		_draw_board_walls(castle, c)
 	for r in 25:
 		_draw_room(r, c, body, head, sight, castle)
 
@@ -340,6 +349,9 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 		floor_col = Color("3f5560")
 	if corrupted:
 		floor_col = Color("2e2240")
+	if _board_art():
+		_draw_room_overlays(r, rect, c, body, sight, castle, corrupted, searched, sp, si, true)
+		return
 	var tile := Art.tex(P.ROOM_TILES[0 if (si >= 0 or sp != "") else posmod(r * 7 + int(game.rng.seed % 1000), P.ROOM_TILES.size())])
 	if tile != null:
 		var mod := Color.WHITE
@@ -360,6 +372,76 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 	if searched and si < 0 and tile == null:
 		draw_rect(rect, Color(P.NIGHT, 0.25))
 	_draw_room_overlays(r, rect, c, body, sight, castle, corrupted, searched, sp, si, tile != null)
+
+
+## Which painted cell a room uses. Painted label = no name/prop drawn over it.
+func _board_tile(r: int) -> String:
+	var castle = game.castle
+	var si: int = castle.seal_index(r)
+	if si >= 0:
+		return P.BOARD_SEAL_CRYSTAL[si] if game.restored[si] else P.BOARD_SEAL_RING[si]
+	var sp: String = castle.specials.get(r, "")
+	if sp == "passage":
+		return P.BOARD_PASSAGE[0 if r == castle.passage[0] else 1]
+	if sp != "":
+		return P.BOARD_SPECIAL[sp]
+	if r == game.start_room:
+		return P.BOARD_ENTRY
+	var keys: Array = P.BOARD_ROOMS.keys()
+	return keys[posmod(r * 7 + int(game.rng.seed % 1000), keys.size())]
+
+
+func _board_labelled(r: int) -> bool:
+	return not P.BOARD_ROOMS.has(_board_tile(r))
+
+
+func _draw_board_cell(r: int) -> void:
+	var tex := Art.tex(_board_tile(r))
+	var rect := room_rect(r)
+	var mod := Color.WHITE
+	if game.castle.corrupted.has(r):
+		mod = Color(0.5, 0.4, 0.6)
+	elif game.searched.has(r):
+		mod = Color(0.8, 0.8, 0.86)
+	if tex != null:
+		draw_texture_rect(tex, rect, false, mod)
+	else:
+		_draw_plain_room(rect, P.FLOOR, cell())
+
+
+## The painted cells carry their own doorway gaps, so every shared wall gets a patch cut from the
+## same painting: a doorway where the castle has a door, solid stone where it does not. Outer
+## walls get the inner half of a solid patch.
+func _draw_board_walls(castle, c: float) -> void:
+	var hs := Art.tex("wall_h_solid")
+	var hd := Art.tex("wall_h_door")
+	var vs := Art.tex("wall_v_solid")
+	var vd := Art.tex("wall_v_door")
+	var half := c * P.BOARD_WALL_HALF
+	var ln := c * P.BOARD_WALL_LEN
+	var o := origin()
+	for y in 5:
+		for x in 5:
+			var r := y * 5 + x
+			var ctr := room_center(r)
+			# Right wall of this cell (and the left outer wall for column 0).
+			var rx := o.x + (x + 1) * c
+			if x < 4:
+				var door: bool = castle.has_door(r, r + 1)
+				draw_texture_rect(vd if door else vs, Rect2(rx - half, ctr.y - ln * 0.5, half * 2, ln), false)
+			else:
+				draw_texture_rect_region(vs, Rect2(rx - half, ctr.y - ln * 0.5, half, ln), Rect2(0, 0, vs.get_width() * 0.5, vs.get_height()))
+			if x == 0:
+				draw_texture_rect_region(vs, Rect2(o.x, ctr.y - ln * 0.5, half, ln), Rect2(vs.get_width() * 0.5, 0, vs.get_width() * 0.5, vs.get_height()))
+			# Bottom wall (and the top outer wall for row 0).
+			var by := o.y + (y + 1) * c
+			if y < 4:
+				var door2: bool = castle.has_door(r, r + 5)
+				draw_texture_rect(hd if door2 else hs, Rect2(ctr.x - ln * 0.5, by - half, ln, half * 2), false)
+			else:
+				draw_texture_rect_region(hs, Rect2(ctr.x - ln * 0.5, by - half, ln, half), Rect2(0, 0, hs.get_width(), hs.get_height() * 0.5))
+			if y == 0:
+				draw_texture_rect_region(hs, Rect2(ctr.x - ln * 0.5, o.y, ln, half), Rect2(0, hs.get_height() * 0.5, hs.get_width(), hs.get_height() * 0.5))
 
 
 ## Stone patches over the tile's doorway gaps on every side without a door.
@@ -430,7 +512,7 @@ func _draw_room_overlays(r: int, rect: Rect2, c: float, body: Font, sight: int, 
 	# Name and coordinate.
 	var name_text: String = room_names[r] if r < room_names.size() else ""
 	if si >= 0:
-		name_text = "Seal %s%s" % [char(65 + si), ", restored" if game.restored[si] else ""]
+		name_text = "Seal %s%s" % [Config.SEAL_NAMES[si], ", restored" if game.restored[si] else ""]
 	elif sp != "":
 		name_text = Config.SPECIALS[sp]["name"]
 	var fs := int(c * 0.115)
@@ -440,21 +522,43 @@ func _draw_room_overlays(r: int, rect: Rect2, c: float, body: Font, sight: int, 
 	while nfs > int(fs * 0.7) and body.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs).x > name_w:
 		nfs -= 1  # shrink long names ("Scriptorium") instead of clipping them
 	var np := rect.position + Vector2(inset + 5, inset + fs + 1)
-	draw_string_outline(body, np, name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, 5, Color(P.INK, 0.9))
-	draw_string(body, np, name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, tc)
+	var painted := _board_art()
+	var plaque: Array = P.BOARD_ROOMS.get(_board_tile(r), []) if painted else []
+	if painted and _board_labelled(r):
+		pass  # the painted label already names it
+	elif not plaque.is_empty():
+		# Dark text centred on the empty plaque, shrunk to fit.
+		var pr := Rect2(rect.position + Vector2(plaque[0], plaque[1]) * rect.size, Vector2(plaque[2], plaque[3]) * rect.size)
+		var pw := pr.size.x - 8.0
+		var pfs := int(minf(fs, pr.size.y * 0.62))
+		while pfs > 8 and body.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, pfs).x > pw:
+			pfs -= 1
+		draw_string(body, Vector2(pr.position.x + 4, pr.get_center().y + pfs * 0.35), name_text, HORIZONTAL_ALIGNMENT_CENTER, pw, pfs, P.PARCHMENT if not corrupted else Color(P.MOON_TEXT, 0.6))
+	else:
+		draw_string_outline(body, np, name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, 5, Color(P.INK, 0.9))
+		draw_string(body, np, name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, tc)
 	var cp := Vector2(rect.end.x - inset - c * 0.22 - 4, np.y)
+	if painted:
+		cp.y = rect.end.y - inset - 4  # bottom-right: the painted labels and banners fill the top
 	draw_string_outline(body, cp, game.room_name(r), HORIZONTAL_ALIGNMENT_RIGHT, c * 0.22, int(fs * 0.9), 4, Color(P.INK, 0.9))
 	draw_string(body, cp, game.room_name(r), HORIZONTAL_ALIGNMENT_RIGHT, c * 0.22, int(fs * 0.9), P.MOON_TEXT)
 
 	var mid := rect.get_center() + Vector2(0, c * 0.06)
-	if si >= 0:
+	if painted:
+		if si >= 0 and game.restored[si]:
+			draw_circle(mid, c * (0.3 + 0.02 * _wave(3.0)), Color(P.CRYSTAL_LIGHT, 0.16))  # soft glow on a restored Seal
+	elif si >= 0:
 		_draw_shrine(mid, c, si, game.restored[si], body)
 	elif sp != "":
 		_draw_prop(mid, c * 0.2, sp, corrupted)
 	if searched and si < 0:
-		var stamp := rect.end - Vector2(inset + c * 0.1, inset + c * 0.1)
-		Icon.draw_icon(self, "check", stamp, c * 0.08, Color(P.MOON_TEXT, 0.9))
-		_outlined(body, rect.position + Vector2(inset + 5, rect.size.y - inset - 5), "searched", int(fs * 0.85), P.MOON_TEXT)
+		var sfs := int(fs * 0.85)
+		var tp := rect.position + Vector2(inset + 5, rect.size.y - inset - 5)
+		_outlined(body, tp, "searched", sfs, P.MOON_TEXT)
+		var stamp := tp + Vector2(body.get_string_size("searched", HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x + c * 0.08, -sfs * 0.35)
+		if not painted:
+			stamp = rect.end - Vector2(inset + c * 0.1, inset + c * 0.1)
+		Icon.draw_icon(self, "check", stamp, c * 0.07, Color(P.MOON_TEXT, 0.9))
 	if corrupted:
 		var cr := Color("b07cd0")
 		draw_polyline(PackedVector2Array([rect.position + Vector2(rect.size.x * 0.2, 4), rect.position + Vector2(rect.size.x * 0.35, rect.size.y * 0.4), rect.position + Vector2(rect.size.x * 0.28, rect.size.y * 0.6), rect.position + Vector2(rect.size.x * 0.45, rect.size.y - 4)]), cr, 2.0)
@@ -482,7 +586,7 @@ func _draw_shrine(center: Vector2, c: float, idx: int, restored: bool, body: Fon
 	# Shape badge with the letter (shape, not colour, tells the Seals apart).
 	var bp := center + Vector2(-c * 0.3, -c * 0.18)
 	Icon.draw_icon(self, P.SEAL_SHAPES[idx], bp, c * 0.085, P.CRYSTAL_LIGHT if restored else Color(P.MOON_TEXT, 0.9))
-	draw_string(Art.heading_font(), bp + Vector2(-c * 0.06, c * 0.045), char(65 + idx), HORIZONTAL_ALIGNMENT_CENTER, c * 0.12, int(c * 0.09), P.INK)
+	draw_string(Art.heading_font(), bp + Vector2(-c * 0.08, c * 0.04), Config.SEAL_NAMES[idx], HORIZONTAL_ALIGNMENT_CENTER, c * 0.16, int(c * 0.075), P.INK)
 
 
 ## One prop per special room, drawn in the same thick-outline style.

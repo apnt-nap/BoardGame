@@ -261,7 +261,7 @@ func room_name(r: int) -> String:
 
 func seal_letter(r: int) -> String:
 	var i: int = castle.seal_index(r)
-	return char(65 + i) if i >= 0 else "?"
+	return Config.SEAL_NAMES[i] if i >= 0 else "?"
 
 
 func debug_lines() -> Array:

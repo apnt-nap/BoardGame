@@ -76,6 +76,7 @@ func _init() -> void:
 		img.save_png(OUT % name)
 		made.append([name, img])
 		print("art/%s.png  %dx%d" % [name, img.get_width(), img.get_height()])
+	_board(made)
 	if "--contact" in OS.get_cmdline_user_args():
 		_contact(made)
 	quit()
@@ -120,6 +121,95 @@ func _trim(img: Image) -> Image:
 				y0 = mini(y0, y)
 				y1 = maxi(y1, y)
 	return img.get_region(Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)) if x1 >= 0 else img
+
+
+## Asia's full-board paintings (build/ref_user/board_ring.png and board_crystal.png, 1254 px):
+## a shared-wall 5x5 grid. Each cell is cut along the wall centre lines (so it carries half of
+## every wall around it) and the cells tile edge to edge. Seal cells come from both versions.
+const BOARD_X := [36, 277, 514, 750, 986, 1220]   # wall centres, measured from the outline bands
+const BOARD_Y := [48, 270, 499, 718, 941, 1160]
+## [row, col] of each named cell in her layout.
+const BOARD_CELLS := {
+	"tile_entry": [0, 0], "tile_bell_tower": [0, 2], "tile_chapel": [1, 1], "tile_armory": [2, 0],
+	"tile_passage_a": [1, 3], "tile_passage_b": [3, 1],
+}
+const BOARD_SEALS := [[0, 4], [2, 2], [4, 0]]   # Seal I, II, III
+## Wall patches, centred on a wall midpoint: [axis, x, y]. h = wall between two rows.
+const BOARD_WALLS := {
+	"wall_h_solid": ["h", 156, 499], "wall_h_door": ["h", 156, 270],
+	"wall_v_solid": ["v", 750, 384], "wall_v_door": ["v", 277, 159],
+}
+const WALL_HALF := 20      # half the wall thickness, px
+const WALL_LEN := 0.30     # patch length as a share of the cell side
+const PLAQUE := Color("7a445c")
+
+
+func _board(made: Array) -> void:
+	var ring := Image.load_from_file("res://build/ref_user/board_ring.png")
+	var crystal := Image.load_from_file("res://build/ref_user/board_crystal.png")
+	if ring == null or crystal == null:
+		print("board art not found in build/ref_user/, skipped")
+		return
+	var out := {}
+	var plain := 0
+	for row in 5:
+		for col in 5:
+			var name := ""
+			for n in BOARD_CELLS:
+				if BOARD_CELLS[n] == [row, col]:
+					name = n
+			var si := BOARD_SEALS.find([row, col])
+			if si >= 0:
+				out["tile_seal_%d_ring" % (si + 1)] = [ring, row, col]
+				out["tile_seal_%d_crystal" % (si + 1)] = [crystal, row, col]
+			elif name != "":
+				out[name] = [ring, row, col]
+			else:
+				plain += 1
+				out["tile_room_%02d" % plain] = [ring, row, col]
+	var plaques := {}
+	for n in out:
+		var spec: Array = out[n]
+		var rect := Rect2i(BOARD_X[spec[2]], BOARD_Y[spec[1]], BOARD_X[spec[2] + 1] - BOARD_X[spec[2]], BOARD_Y[spec[1] + 1] - BOARD_Y[spec[1]])
+		var img: Image = spec[0].get_region(rect)
+		img.save_png(OUT % n)
+		made.append([n, img])
+		if n.begins_with("tile_room") or n == "tile_entry":
+			plaques[n] = _find_plaque(img)
+		print("art/%s.png  %dx%d" % [n, img.get_width(), img.get_height()])
+	for n in BOARD_WALLS:
+		var w: Array = BOARD_WALLS[n]
+		var cw: float = (BOARD_X[5] - BOARD_X[0]) / 5.0
+		var len := int(cw * WALL_LEN)
+		var rect := Rect2i(w[1] - len / 2, w[2] - WALL_HALF, len, WALL_HALF * 2) if w[0] == "h" else Rect2i(w[1] - WALL_HALF, w[2] - len / 2, WALL_HALF * 2, len)
+		var img := ring.get_region(rect)
+		img.save_png(OUT % n)
+		made.append([n, img])
+		print("art/%s.png  %dx%d" % [n, img.get_width(), img.get_height()])
+	print("PLAQUES ", plaques)
+
+
+## The empty name plaque (dark plum fill) in a furnished cell, as a fraction rect; empty if none.
+func _find_plaque(img: Image) -> Array:
+	var w := img.get_width()
+	var h := img.get_height()
+	var x0 := w
+	var y0 := h
+	var x1 := -1
+	var y1 := -1
+	var n := 0
+	for y in range(int(h * 0.58), h - WALL_HALF):  # plaques sit low; banners and books higher up
+		for x in range(WALL_HALF, w - WALL_HALF):
+			var c := img.get_pixel(x, y)
+			if absf(c.r - PLAQUE.r) + absf(c.g - PLAQUE.g) + absf(c.b - PLAQUE.b) < 0.09:
+				n += 1
+				x0 = mini(x0, x)
+				x1 = maxi(x1, x)
+				y0 = mini(y0, y)
+				y1 = maxi(y1, y)
+	if n < 600:
+		return []
+	return [snappedf(float(x0) / w, 0.001), snappedf(float(y0) / h, 0.001), snappedf(float(x1 - x0 + 1) / w, 0.001), snappedf(float(y1 - y0 + 1) / h, 0.001)]
 
 
 ## Every output on a checkerboard (so transparency is visible), 6 per row, 260 px cells.

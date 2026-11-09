@@ -96,6 +96,24 @@ const SHRINE_ART := "seal_shrine"
 const SHRINE_ARTS := ["seal_shrine_a", "seal_shrine_b", "seal_shrine_c"]
 const SHRINE_RESTORED := ["seal_shrine_restored", "seal_shrine_b_restored", "seal_shrine_c_restored"]  # B and C: recoloured from the unrestored art
 const ROOM_TILES := ["room_floor_plain", "room_floor_desk", "room_floor_barrels"]  # walls with a doorway gap on every side
+## Asia's full-board painting, cut into cells that tile edge to edge (scripts/tools/import_art.gd).
+## These have their names painted on, so the board draws no name or prop over them.
+const BOARD_SEAL_RING := ["tile_seal_1_ring", "tile_seal_2_ring", "tile_seal_3_ring"]          # before restoring
+const BOARD_SEAL_CRYSTAL := ["tile_seal_1_crystal", "tile_seal_2_crystal", "tile_seal_3_crystal"]  # after
+const BOARD_SPECIAL := {"chapel": "tile_chapel", "bell_tower": "tile_bell_tower", "armory": "tile_armory"}
+const BOARD_PASSAGE := ["tile_passage_a", "tile_passage_b"]
+const BOARD_ENTRY := "tile_entry"
+## Furnished ordinary cells and their empty name plaque [x, y, w, h] as a share of the tile ([] = none).
+const BOARD_ROOMS := {
+	"tile_room_01": [0.291, 0.707, 0.439, 0.162], "tile_room_02": [0.258, 0.685, 0.453, 0.185],
+	"tile_room_03": [0.315, 0.686, 0.44, 0.179], "tile_room_04": [0.275, 0.681, 0.475, 0.179],
+	"tile_room_05": [0.299, 0.686, 0.449, 0.175], "tile_room_06": [], "tile_room_07": [0.407, 0.735, 0.415, 0.151],
+	"tile_room_08": [], "tile_room_09": [0.336, 0.713, 0.436, 0.157], "tile_room_10": [0.25, 0.668, 0.496, 0.193],
+	"tile_room_11": [0.403, 0.713, 0.419, 0.157], "tile_room_12": [], "tile_room_13": [],
+	"tile_room_14": [0.275, 0.689, 0.47, 0.187], "tile_room_15": [], "tile_room_16": [],
+}
+const BOARD_WALL_HALF := 0.088   # half the wall thickness as a share of the cell (20 px of ~232)
+const BOARD_WALL_LEN := 0.30     # wall patch length as a share of the cell side
 const KNIGHT_ART := "knight"
 const PARCHMENT_ART := "parchment"
 const MENU_ART := "menu_bg"

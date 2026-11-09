@@ -9,6 +9,7 @@ const MAX_TREASURES := 2
 const SHARDS_PER_SEAL := 2
 const EXTRA_DOOR_CHANCE := 0.30
 const SEAL_MIN_DISTANCE := 3
+const SEAL_NAMES := ["I", "II", "III"]  # player-facing Seal names (index 0-2 stays the id)
 
 ## Knight senses per difficulty (the Knight never knows more than this).
 ## sight = how many doorways away it can see you. hunt_steps applies when it charges at loud Noise.

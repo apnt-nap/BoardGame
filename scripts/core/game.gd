@@ -14,6 +14,7 @@ var difficulty := "normal"
 var diff: Dictionary
 
 var player_room := 0
+var start_room := 0           # where this run began (read-only; the board shows the Entry Hall there)
 var health: int = Config.MAX_HEALTH
 var noise := 0
 var token := -1               # Last Known Noise token room (-1 = off the map)
@@ -57,6 +58,7 @@ func new_game(p_hero: String, p_difficulty: String, seed_value: int = 0, log_kni
 		if not (r in castle.seals) and not castle.specials.has(r):
 			starts.append(r)
 	player_room = _pick(starts)
+	start_room = player_room
 	var dist: Array = castle.distances(player_room)
 	var far := []
 	for r in castle.room_count():
@@ -290,7 +292,7 @@ func _activate(use_key: bool) -> void:
 		rune_key_ready = false
 		_ev("hero", "The Rune Key turns: the Seal takes only 1 Shard.")
 	restored[si] = true
-	_ev("seal", "Seal %s restored." % char(65 + si), {"seal": si})
+	_ev("seal", "Seal %s restored." % Config.SEAL_NAMES[si], {"seal": si})
 	_on_seal_restored()
 
 
@@ -677,7 +679,7 @@ func preview(i: int, mode: String, target: int = -1) -> Dictionary:
 	elif card == "activate" and (mode == "normal" or mode == "rune_key"):
 		var si := unrestored_seal_here()
 		var cost := activate_cost(mode == "rune_key")
-		out["will"].append("Spend %d Shard%s (you have %d). Seal %s is restored." % [cost, "" if cost == 1 else "s", shards, char(65 + maxi(si, 0))])
+		out["will"].append("Spend %d Shard%s (you have %d). Seal %s is restored." % [cost, "" if cost == 1 else "s", shards, Config.SEAL_NAMES[maxi(si, 0)]])
 		if seals_restored() == 2:
 			out["will"].append("This is the third Seal: you win.")
 			return out
@@ -713,7 +715,7 @@ func knight_public() -> Dictionary:
 		"INVESTIGATE":
 			if k.signal_room >= 0 and k.target == k.signal_room:
 				var si: int = castle.seal_index(k.signal_room)
-				out = {"kind": "signal", "text": "Drawn to the signal at %s." % ("Seal " + char(65 + si) if si >= 0 else room_name(k.signal_room)), "arrow": true}
+				out = {"kind": "signal", "text": "Drawn to the signal at %s." % ("Seal " + Config.SEAL_NAMES[si] if si >= 0 else room_name(k.signal_room)), "arrow": true}
 			elif token >= 0 and k.target == token:
 				out = {"kind": "marker", "text": "Investigating the noise marker in %s." % room_name(token), "arrow": true}
 			else:

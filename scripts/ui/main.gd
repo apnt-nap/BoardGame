@@ -1138,6 +1138,7 @@ func _start_game() -> void:
 		var t = names[i]
 		names[i] = names[j]
 		names[j] = t
+	names[game.start_room] = "Entry Hall"  # matches the painted Entry Hall tile
 	ui["room_names"] = names
 	board.game = game
 	board.room_names = names
@@ -1301,7 +1302,7 @@ func _handle(e: Dictionary) -> void:
 			board.flare(sroom)
 			if not settings.reduced_motion:
 				board.flash = Color(P.CRYSTAL_LIGHT, 0.25)
-			_float_text(sroom, "Seal %s restored" % char(65 + e["seal"]), P.CRYSTAL_LIGHT)
+			_float_text(sroom, "Seal %s restored" % Config.SEAL_NAMES[e["seal"]], P.CRYSTAL_LIGHT)
 			_bump(ui["seal_box"], Color(0.85, 0.7, 1.0))
 			_note(e["text"])
 			await _wait(0.9)
@@ -1681,7 +1682,7 @@ func _refresh() -> void:
 	var si: int = game.castle.seal_index(here)
 	var rname: String = board.room_names[here] if here < board.room_names.size() else ""
 	if si >= 0:
-		rname = "Seal %s" % char(65 + si)
+		rname = "Seal %s" % Config.SEAL_NAMES[si]
 	elif game.castle.specials.has(here):
 		rname = Config.SPECIALS[game.castle.specials[here]]["name"]
 	ui["room_name"].text = "This room: %s (%s)" % [rname, game.room_name(here)]
