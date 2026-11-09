@@ -1366,6 +1366,7 @@ func _float_text(room: int, text: String, color: Color) -> void:
 	var l := _label(text, 24, color, false, "head")
 	l.add_theme_color_override("font_outline_color", P.INK)
 	l.add_theme_constant_override("outline_size", 7)
+	l.add_to_group("board_float")
 	overlay.add_child(l)
 	l.position = board.global_position + board.room_center(room) - Vector2(70, 40)
 	var tw := l.create_tween()
@@ -1866,6 +1867,8 @@ func _refresh_encounter(hi: Dictionary) -> void:
 	var enc: bool = game.phase == "encounter" and not busy
 	ui["encounter"].visible = enc
 	board.dim = enc
+	if enc:
+		get_tree().call_group("board_float", "queue_free")  # board pop-ups must not float over the full-screen scene
 	if not enc:
 		return
 	ui["enc_hero"].texture = Art.tex(P.HERO_ART.get(game.hero, ""))
@@ -2036,6 +2039,7 @@ func _build_end() -> void:
 
 
 func _show_end() -> void:
+	get_tree().call_group("board_float", "queue_free")
 	var won: bool = game.phase == "won"
 	var turns: int = mini(game.turn, Config.TURN_LIMIT)
 	var unlocks: Array = profile.record(game.hero, game.difficulty, won, turns, _hero_names())

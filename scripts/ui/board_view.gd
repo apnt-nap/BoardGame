@@ -368,13 +368,13 @@ func _close_walls(r: int, rect: Rect2, tile: Texture2D, mod: Color, castle) -> v
 	var p: Vector2i = castle.pos(r)
 	var sides := [[Vector2i(0, -1), "top"], [Vector2i(0, 1), "bottom"], [Vector2i(-1, 0), "left"], [Vector2i(1, 0), "right"]]
 	var t := 0.105   # wall thickness
-	var g0 := 0.432  # gap start
-	var gw := 0.136  # gap width (with a little overlap)
+	var g0 := 0.42   # gap start (measured gap: 0.431-0.566 on the sides, 0.4375-0.5625 top/bottom)
+	var gw := 0.16   # gap width, overlapping both edges so no light sliver shows
 	var sx := 0.16   # where the patch is copied from (plain wall blocks)
 	for sd in sides:
 		var d: Vector2i = sd[0]
 		var q := p + d
-		var open := q.x >= 0 and q.y >= 0 and q.x < 5 and q.y < 5 and castle.has_door(r, castle.idx(q.x, q.y))
+		var open: bool = q.x >= 0 and q.y >= 0 and q.x < 5 and q.y < 5 and castle.has_door(r, castle.idx(q.x, q.y))
 		if open:
 			continue
 		var dst: Rect2

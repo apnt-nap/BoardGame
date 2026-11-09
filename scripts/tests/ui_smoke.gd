@@ -74,7 +74,7 @@ func _run() -> void:
 			assert(steps < 600, "UI game did not end")
 			if g.seals_restored() > seals_seen:
 				seals_seen = g.seals_restored()
-				if not shots.has("08_seal_restored"):
+				if not shots.has("08_seal_restored") and g.phase == "player":  # the Knight may already be on you
 					Engine.time_scale = 1.0
 					await _shot("08_seal_restored")
 					Engine.time_scale = 6.0
