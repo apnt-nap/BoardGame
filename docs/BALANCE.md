@@ -11,7 +11,7 @@ Build v1.0 · 7 Nov 2026 · raw data: [`sim_results.csv`](sim_results.csv)
 `scripts/sim/simulate.gd` runs the real game code (`scripts/core/`) headless. A heuristic bot
 (`scripts/core/bot.gd`) plays **1,000 games per hero per difficulty (18,000 games)** on fresh random castles.
 The bot sees only what a human sees on the board: the Knight's room, its intent arrow, the Noise token
-and the Spirit. It never reads the Knight's memory or its pre-rolled die. Its plan: gather Shards in the
+and (in v1.0) the Spirit. It never reads the Knight's memory or its pre-rolled die. Its plan: gather Shards in the
 nearest unsearched room, walk to the nearest Seal that isn't guarded, avoid the Knight's room and its next
 step, go quiet when Noise nears the hunt threshold, and HIDE in encounters (escape items at 2 Health or less).
 
