@@ -496,39 +496,30 @@ func _test_normal_knight() -> void:
 
 
 func _test_easy_hard_unchanged() -> void:
+	# Easy and Hard use Normal's Knight; only turns, hearing and encounter HIDE differ.
 	var want := {
-		"easy": {"name": "Easy", "move_min": 4, "memory": 1, "hunt_at": 4, "hunt_steps": 1, "search_turns": 1, "sight": 0, "checks_hiding": false},
-		"hard": {"name": "Hard", "move_min": 2, "memory": 3, "hunt_at": 3, "hunt_steps": 2, "search_turns": 3, "sight": 2, "checks_hiding": true},
+		"easy": {"turns": 42, "hunt_at": 4, "checks_hiding": false},
+		"normal": {"turns": 36, "hunt_at": 3, "checks_hiding": false},
+		"hard": {"turns": 36, "hunt_at": 2, "checks_hiding": true},
 	}
+	var n: Dictionary = Config.DIFFICULTY["normal"]
 	for d in want:
-		check(Config.DIFFICULTY[d].size() == want[d].size(), "%s has no new settings" % d)
+		var dd: Dictionary = Config.DIFFICULTY[d]
+		check(dd.size() == n.size(), "%s has the same settings as Normal" % d)
+		for key in n:
+			if key == "name" or want[d].has(key):
+				continue
+			check(dd.get(key) == n[key], "%s %s matches Normal" % [d, key])
 		for key in want[d]:
-			check(Config.DIFFICULTY[d].get(key) == want[d][key], "%s %s unchanged" % [d, key])
-	for d in ["easy", "hard"]:
+			check(dd.get(key) == want[d][key], "%s %s is %s" % [d, key, str(want[d][key])])
 		var g = Game.new()
 		g.new_game("ranger", d, 91, false)
-		var k = g.knight
-		check(not k.fixed_move(), "%s still uses the movement die" % d)
-		var stays := 0
-		for i in 60:
-			_place(g, 4)
-			var pre: int = k.next_roll
-			var w: Array = k.begin_turn(g._senses())
-			check(k.last_roll == pre, "%s: the pre-rolled die is used" % d)
-			if pre < g.diff["move_min"]:
-				stays += 1
-				check(w.is_empty(), "%s: a low roll means no move" % d)
-			else:
-				check(w.size() == 1, "%s: Patrol moves 1 room on a good roll" % d)
-		check(stays > 0 or d == "hard", "%s: some turns the Knight stays" % d)
-		# Hearing charge: Hard 2 rooms, Easy 1, on a good roll.
-		for i in 30:
-			_place(g, 4)
-			g.noise = 4
-			var pre2: int = k.next_roll
-			var w2: Array = k.begin_turn(g._senses())
-			if pre2 >= g.diff["move_min"]:
-				check(w2.size() == (2 if d == "hard" else 1), "%s: charge steps unchanged" % d)
+		check(g.knight.fixed_move(), "%s: the Knight moves every turn (no die)" % d)
+		check(g.turn_limit() == want[d]["turns"] and g.turns_left() == want[d]["turns"], "%s: %d turns before midnight" % [d, want[d]["turns"]])
+		check(g.hide_safe_min() == (5 if want[d]["checks_hiding"] else 4), "%s: encounter HIDE safe minimum" % d)
+		# Midnight comes after the last turn of this difficulty, not before.
+		g.turn = want[d]["turns"]
+		check(g.turns_left() == 1, "%s: last turn counts down to 1" % d)
 
 
 # ---------------------------------------------------------------- line of sight

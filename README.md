@@ -42,7 +42,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 
 ## How to play
 
-**Goal.** Restore all three Seals (2 Rune Shards each) before your Health hits 0 or Turn 36 ends.
+**Goal.** Restore all three Seals (2 Rune Shards each) before your Health hits 0 or midnight (Turn 36 ends; Turn 42 on Easy).
 
 **Your turn.** You hold 2 Action Cards. Play 1; the other is discarded. Then the Knight moves.
 
@@ -108,7 +108,7 @@ threshold or while you are within its sight range. It never reads hidden game st
 | HUNT | Noise ≥ hunt threshold (charges, Hard = 2 rooms/move) or it sees you (stalks, 1 room) | Shortest path to your room |
 | SEARCH | It reaches the noise and you're gone, it loses the trail, or you out-hide it | Checks the rooms around that spot for N turns, then patrols |
 
-On Easy and Hard a pre-rolled D6 decides move or stay. On Normal there is no die: the Knight moves every turn
+On every difficulty there is no movement die: the Knight moves every turn
 (unless stunned): 2 rooms when it hears you (Noise at the threshold, even if it also sees you), otherwise 1 room
 (Patrol, Investigate, Search, a sight-only Hunt, and following its memory after losing you). It always stops on
 entering your room.
@@ -120,11 +120,16 @@ reaches the Seal and you're gone, it starts searching there. A newer signal repl
 wins at once, with no signal. Every decision
 is logged with its reason, both in the debug overlay (F1, debug builds) and in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\knight_log.txt`.
 
-| Difficulty | Moves on | Memory | Hunts at Noise | Steps when charging | Search | Sight | Hide check |
-|---|---|---|---|---|---|---|---|
-| Easy | 4–6 | 1 turn | 4 | 1 | 1 turn | same room only | 4–6 safe |
-| Normal | every turn (no die) | 2 turns | 3 | 2 | 2 turns | 1 room, straight line | 4–6 safe |
-| Hard | 2–6 | 3 turns | 3 | 2 | 3 turns | 2 rooms, straight line | 5–6 safe |
+All three difficulties use the same Knight (moves every turn, 2-turn memory, charges 2 rooms, searches 2 turns,
+sees 1 room in a straight line). Only these change:
+
+| Difficulty | Turns before midnight | Hears you at Noise | Encounter HIDE safe on |
+|---|---|---|---|
+| Easy | 42 | 4 | 4–6 |
+| Normal | 36 | 3 | 4–6 |
+| Hard | 36 | 2 | 5–6 |
+
+Health 3, 2 Shards per Seal and 1 damage when caught are the same on every level.
 
 ## Balance simulation
 

@@ -128,7 +128,12 @@ func room_name(r: int) -> String:
 
 
 func turns_left() -> int:
-	return Config.TURN_LIMIT - turn + 1
+	return turn_limit() - turn + 1
+
+
+## Turns before midnight on this difficulty.
+func turn_limit() -> int:
+	return int(diff.get("turns", Config.TURN_LIMIT))
 
 
 func seals_restored() -> int:
@@ -492,7 +497,7 @@ func _world_phase() -> void:
 
 func _end_turn() -> void:
 	turn += 1
-	if turn > Config.TURN_LIMIT:
+	if turn > turn_limit():
 		_lose("Midnight strikes. The curse sets like stone, and so do you.")
 		return
 	room_action_used = false

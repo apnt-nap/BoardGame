@@ -26,9 +26,9 @@ const CARD_COPY := {
 }
 
 const RULES_PAGES := [
-	["The goal", "seal_shrine", "Restore all three [b]Seals[/b] before midnight (turn 36 ends). Each Seal needs [b]2 Rune Shards[/b]. You lose if your Health reaches 0.\n\nThe Cursed Knight walks the Keep. It never knows where you are unless it [b]hears[/b] you or [b]sees[/b] you."],
+	["The goal", "seal_shrine", "Restore all three [b]Seals[/b] before midnight (turn 36 ends, 42 on Easy). Each Seal needs [b]2 Rune Shards[/b]. You lose if your Health reaches 0.\n\nThe Cursed Knight walks the Keep. It never knows where you are unless it [b]hears[/b] you or [b]sees[/b] you."],
 	["Your turn", "cardart_explore", "You hold [b]2 cards[/b]. Play one; the other is discarded.\n\n[b]Explore[/b] and [b]Dash[/b] move you. [b]Search[/b] finds Shards. [b]Activate[/b] restores a Seal. [b]Hide[/b] (the card) lowers Noise.\n\n[b]Sneak[/b] lets any card move you 1 room silently, or keep still and lower Noise by 1. Once per run you may [b]redraw[/b] your hand for free."],
-	["Noise and the Knight", "knight", "Dash and failed Searches make [b]Noise[/b] and drop an orange [b]marker[/b]. The Knight walks to the marker.\n\nAt [b]Noise 3[/b] (4 on Easy) it hears you and knows your room. It also sees you down a straight corridor of open doorways: [b]hatched rooms[/b] are in its sight.\n\nAfter you act, the Knight moves. Its arrow appears only when you can know where it is going."],
+	["Noise and the Knight", "knight", "Dash and failed Searches make [b]Noise[/b] and drop an orange [b]marker[/b]. The Knight walks to the marker.\n\nAt [b]Noise 3[/b] (4 on Easy, 2 on Hard) it hears you and knows your room. It also sees you down a straight corridor of open doorways: [b]hatched rooms[/b] are in its sight.\n\nAfter you act, the Knight moves. Its arrow appears only when you can know where it is going."],
 	["Encounters", "cardart_hide", "If the Knight ends its move in your room, it finds you.\n\n[b]RUN[/b]: flee 1 room, Noise +1. On a die roll of 1-2 you also lose 1 Health.\n[b]HIDE[/b]: on 4-6 (5-6 on Hard) you stay safe and it searches nearby. Otherwise you lose 1 Health and flee.\n\nYour hero item and the Smoke Vial can get you out cleanly."],
 	["Seals and the Keep", "cardart_activate", "Stand on a Seal with 2 Shards and play [b]Activate[/b]. It always works.\n\nEach restored Seal shifts a doorway and sends a [b]signal[/b] that draws the Knight to that room, so leave quickly. The second Seal corrupts two special rooms.\n\n[b]Chapel[/b] heals once. [b]Bell Tower[/b] moves the marker to it. [b]Armory[/b] gives a treasure. [b]Secret Passages[/b] link two corners."],
 	["Controls", "", "[b]Mouse[/b]: click a card, then a highlighted room or the card again to confirm. Right-click cancels.\n\n[b]1 / 2[/b] pick a card. [b]Space[/b] confirms. [b]Esc[/b] cancels, or opens the pause menu. [b]R[/b] redraws. [b]Tab[/b] steps through the rooms you can reach. [b]M[/b] mutes.\n\nSettings has reduced motion, faster animations, larger text and one-click play."],
@@ -562,6 +562,7 @@ func _build_difficulty() -> void:
 		var moves: String = "Every turn" if info.get("fixed_move", false) else "On a die roll of %d-6" % info["move_min"]
 		var sees: String = "Same room only" if info["sight"] == 0 else "%d room%s in a straight line" % [info["sight"], "" if info["sight"] == 1 else "s"]
 		var rows := [
+			["Turns before midnight", str(info.get("turns", Config.TURN_LIMIT))],
 			["Knight moves", moves],
 			["Hears you at Noise", str(info["hunt_at"])],
 			["Sees you", sees],
@@ -1417,7 +1418,7 @@ func _roll_dice(roll: int, total: int, ok: bool, text: String) -> void:
 	await _wait(0.15)
 
 
-## Small red die beside the Knight (Easy and Hard only): its move-or-stay roll.
+## Small red die beside the Knight: its move-or-stay roll (only when a difficulty uses the die).
 func _knight_die(roll: int, moves: bool) -> void:
 	if not board._pos.has("knight"):
 		return
@@ -1650,7 +1651,7 @@ func _refresh() -> void:
 		ui["seal_icons"][i].set_icon(P.SEAL_SHAPES[i], P.CRYSTAL_LIGHT, game.restored[i])
 	ui["seals_l"].text = "%d/3" % game.seals_restored()
 	var left: int = maxi(0, game.turns_left())
-	ui["turns_l"].text = "Turn %d, %d left" % [mini(game.turn, Config.TURN_LIMIT), left]
+	ui["turns_l"].text = "Turn %d, %d left" % [mini(game.turn, game.turn_limit()), left]
 	ui["turns_l"].add_theme_color_override("font_color", P.BAD if left <= 5 else P.INK)
 
 	# Knight panel (public information only)
@@ -1989,7 +1990,8 @@ func _build_end() -> void:
 	cause.add_child(_night_title("or", 26, "head"))
 	ui["cause_time"] = _vbox(4)
 	ui["cause_time"].add_child(Icon.make("hourglass", P.AMBER, 110))
-	var tl := _night_title("Turn %d ended." % Config.TURN_LIMIT, 22, "body")
+	var tl := _night_title("Midnight struck.", 22, "body")
+	ui["cause_time_l"] = tl
 	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ui["cause_time"].add_child(tl)
 	cause.add_child(ui["cause_time"])
@@ -2032,7 +2034,7 @@ func _build_end() -> void:
 func _show_end() -> void:
 	get_tree().call_group("board_float", "queue_free")
 	var won: bool = game.phase == "won"
-	var turns: int = mini(game.turn, Config.TURN_LIMIT)
+	var turns: int = mini(game.turn, game.turn_limit())
 	var unlocks: Array = profile.record(game.hero, game.difficulty, won, turns, _hero_names())
 	var s: Dictionary = game.stats
 	var timed_out: bool = game.health > 0 and not won
@@ -2045,14 +2047,15 @@ func _show_end() -> void:
 	ui["end_cause"].visible = not won
 	ui["cause_health"].modulate = Color(1, 1, 1, 0.35 if timed_out else 1.0)
 	ui["cause_time"].modulate = Color(1, 1, 1, 1.0 if timed_out else 0.35)
+	ui["cause_time_l"].text = "Turn %d ended." % game.turn_limit()
 	ui["end_title"].text = "The curse is lifted" if won else "The Keep remains cursed"
-	ui["end_reason"].text = "All three Seals are restored." if won else ("Midnight: turn %d ended before the last Seal was restored." % Config.TURN_LIMIT if timed_out else "Your Health reached 0. The Cursed Knight caught you one time too many.")
+	ui["end_reason"].text = "All three Seals are restored." if won else ("Midnight: turn %d ended before the last Seal was restored." % game.turn_limit() if timed_out else "Your Health reached 0. The Cursed Knight caught you one time too many.")
 	ui["end_again"].text = "Play again" if won else "Try again"
 	ui["end_footer"].text = "You escaped Blackthorn Keep." if won else ""
 	ui["end_footer"].visible = won
 	var best: String = ("    Best on %s: %d turns" % [Config.DIFFICULTY[game.difficulty]["name"], profile.best_turns[game.difficulty]]) if profile.best_turns.has(game.difficulty) else ""
 	ui["end_stats"].text = "[b]%s[/b] on %s    Turns: %d of %d%s\nSeals restored: %d of 3    Times found: %d    Damage taken: %d\nShards found: %d    Noise made: %d    Keep shifts: %d" % [
-		Config.HEROES[game.hero]["name"], Config.DIFFICULTY[game.difficulty]["name"], turns, Config.TURN_LIMIT, best,
+		Config.HEROES[game.hero]["name"], Config.DIFFICULTY[game.difficulty]["name"], turns, game.turn_limit(), best,
 		game.seals_restored(), s["found"], s["damage"], s["shards"], s["noise_made"], s["keep_shifts"]]
 	var tip := ""
 	if not won:

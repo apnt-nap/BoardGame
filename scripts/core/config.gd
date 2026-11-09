@@ -3,7 +3,7 @@ extends RefCounted
 
 const GRID := 5
 const MAX_HEALTH := 3
-const TURN_LIMIT := 36  # tuned with the bot simulation (see docs/BALANCE.md)
+const TURN_LIMIT := 36  # Normal and Hard; each difficulty sets its own "turns" below
 const MAX_NOISE := 5
 const MAX_TREASURES := 2
 const SHARDS_PER_SEAL := 2
@@ -13,11 +13,12 @@ const SEAL_NAMES := ["I", "II", "III"]  # player-facing Seal names (index 0-2 st
 
 ## Knight senses per difficulty (the Knight never knows more than this).
 ## sight = how many doorways away it can see you. hunt_steps applies when it charges at loud Noise.
-## fixed_move (Normal only): no movement die; it moves every turn (move_min is then unused).
+## fixed_move: no movement die; it moves every turn (move_min is then unused). All three
+## difficulties walk like Normal; Easy and Hard differ only in turns, hunt_at and checks_hiding.
 const DIFFICULTY := {
-	"easy":   {"name": "Easy",   "move_min": 4, "memory": 1, "hunt_at": 4, "hunt_steps": 1, "search_turns": 1, "sight": 0, "checks_hiding": false},
-	"normal": {"name": "Normal", "move_min": 2, "fixed_move": true, "memory": 2, "hunt_at": 3, "hunt_steps": 2, "search_turns": 2, "sight": 1, "checks_hiding": false},
-	"hard":   {"name": "Hard",   "move_min": 2, "memory": 3, "hunt_at": 3, "hunt_steps": 2, "search_turns": 3, "sight": 2, "checks_hiding": true},
+	"easy":   {"name": "Easy",   "turns": 42, "move_min": 2, "fixed_move": true, "memory": 2, "hunt_at": 4, "hunt_steps": 2, "search_turns": 2, "sight": 1, "checks_hiding": false},
+	"normal": {"name": "Normal", "turns": 36, "move_min": 2, "fixed_move": true, "memory": 2, "hunt_at": 3, "hunt_steps": 2, "search_turns": 2, "sight": 1, "checks_hiding": false},
+	"hard":   {"name": "Hard",   "turns": 36, "move_min": 2, "fixed_move": true, "memory": 2, "hunt_at": 2, "hunt_steps": 2, "search_turns": 2, "sight": 1, "checks_hiding": true},
 }
 const DIFFICULTY_ORDER := ["easy", "normal", "hard"]
 

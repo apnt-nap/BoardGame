@@ -8,7 +8,7 @@
 > - **Focus is gone.** Instead you get one free redraw per run, before playing your card.
 > - **Removed:** the Library room and the Secret Passage Map treasure. Rooms are now Chapel, Armory, Bell Tower and Secret Passage.
 > - **Rune Key:** once per run, restore a Seal with 1 Shard instead of 2 (you still need the Activate card and to be on the Seal).
-> - **Normal Knight: no movement die.** It moves every turn unless stunned: 2 rooms when it hears you (Noise at the threshold, even if it also sees you), 1 room otherwise (Patrol, Investigate, Search, sight-only Hunt, memory pursuit). It stops on entering your room. Easy and Hard keep the die.
+> - **Normal Knight: no movement die.** It moves every turn unless stunned: 2 rooms when it hears you (Noise at the threshold, even if it also sees you), 1 room otherwise (Patrol, Investigate, Search, sight-only Hunt, memory pursuit). It stops on entering your room. Easy and Hard now walk the same way (see Difficulty levels).
 > - **Seal signal:** restoring the 1st or 2nd Seal sends a signal from its room. On its next turn the Knight heads there (2 rooms per turn, no die, all difficulties) unless it hears or sees you, which comes first and cancels the signal. Stun keeps the signal. Reaching the Seal with nobody there starts a Search. A newer signal replaces an older one. The third Seal wins at once with no signal.
 > - **Wandering Spirit removed,** with the Priest hero (Blessing) and the Spirit Bell. After your action the Knight acts straight away. Five heroes (Ranger, Alchemist, Mage, Knight, Thief) and four treasures (Ward Charm, Old Shield, Emergency Ration, Smoke Vial) remain.
 > - **Line of sight:** the Knight sees you only in a straight row or column through open doorways, up to its sight range. It cannot see around a corner or through a wall.
@@ -83,17 +83,16 @@ The Knight now guards restored Seals more closely. Each restored Seal is added t
 
 ## Difficulty levels
 
-Difficulty changes only the Knight's senses and reactions, never the rules you play by, so it stays fair and believable on every level. The bigger 5×5 map is why the Knight moves more often than the paper version's 5–6.
+Every level uses Normal's Knight: it moves every turn with no die, remembers a noise for 2 turns, charges 2 rooms when it hears you, searches for 2 turns and sees 1 room down a straight corridor. A bot test showed the die walk made Hard no harder than Normal (56% vs 52% Ranger wins), so the walk is now the same everywhere and the levels differ only in these settings:
 
 | Setting | Easy | Normal | Hard |
 | --- | --- | --- | --- |
-| Knight moves on a D6 roll of | 4–6 | every turn, no die (playtest v1.1) | 2–6 |
-| Remembers a noise for | 1 turn | 2 turns | 3 turns |
-| Starts hunting at Noise | 4 | 3 | 3 |
-| Steps per move when hunting | 1 | 2 (playtest v1.1; was 1) | 2 |
-| Search state lasts | 1 turn | 2 turns | 3 turns |
-| Sees you down a straight corridor of open doorways (sight, rooms) | 0 (same room only) | 1 | 2 |
+| Turns before midnight | 42 | 36 | 36 |
+| Starts hunting at Noise | 4 | 3 | 2 |
 | Encounter HIDE is safe on | 4–6 | 4–6 | 5–6 (it checks hiding spots) |
+| Health (start / max) | 3 | 3 | 3 |
+| Shards per Seal | 2 | 2 | 2 |
+| Damage when caught | 1 | 1 | 1 |
 | Target player win rate | 65–75% | 45–55% | 25–35% |
 
 The win-rate targets are starting points. Step 4's bot simulation checks them and we tune the numbers until each level lands in its range.

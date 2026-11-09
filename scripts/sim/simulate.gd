@@ -50,7 +50,7 @@ func _init() -> void:
 					loss_health += 1
 				else:
 					loss_time += 1
-				turns += mini(g.turn, Config.TURN_LIMIT)
+				turns += mini(g.turn, g.turn_limit())
 				found += g.stats["found"]
 				damage += g.stats["damage"]
 			var line := "%s,%s,%d,%.3f,%.2f,%.2f,%.2f,%d,%d" % [hero, diff, games, float(wins) / games,
