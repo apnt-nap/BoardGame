@@ -32,6 +32,7 @@ func _run() -> void:
 	_test_line_of_sight()
 	_test_seal_signal()
 	_test_spirit_removed()
+	_test_previews_read_only()
 	_test_bot_games()
 	print("%d checks, %d failed" % [checks, failures])
 	print("Rules tests passed" if failures == 0 else "Rules tests FAILED")
@@ -175,6 +176,13 @@ func _test_noise_cards() -> void:
 	g.noise = 1
 	_set_hand(g, ["hide", "search"])
 	check(g.play_card(0, "normal") and g.noise == 0, "Hide clamps Noise at 0")
+
+	g = _game()
+	g.noise = 0
+	_set_hand(g, ["hide", "search"])
+	var here0: int = g.player_room
+	check(g.can_play(0, "normal"), "Hide card is playable at Noise 0 (decision A)")
+	check(g.play_card(0, "normal") and g.noise == 0 and g.player_room == here0, "Hide at Noise 0: stay, Noise stays 0")
 
 	g = _game()
 	g.noise = 0
@@ -756,3 +764,52 @@ func _test_bot_games() -> void:
 		check(g.shards >= 0, "Shards never negative")
 		check(g.noise >= 0 and g.noise <= Config.MAX_NOISE, "Noise stays within 0-5")
 	check(ended == 60, "all 60 bot games finish under the new rules")
+
+
+# ---------------------------------------------------------------- UI previews
+
+## preview(), why_not() and knight_public() must not change the game or advance the RNG.
+func _snapshot(g) -> String:
+	return str([g.player_room, g.noise, g.token, g.token_serial, g.shards, g.restored, g.hand, g.deck.size(),
+		g.search_bonus, g.searched.size(), g.treasures, g.turn, g.phase, g.rng.state, g.knight.room,
+		g.knight.state, g.knight.target, g.knight.plan, g.knight.next_roll, g.knight.search_pick, g.events.size()])
+
+
+func _test_previews_read_only() -> void:
+	for s in range(1, 41):
+		var g = Game.new()
+		g.new_game(Config.HERO_ORDER[s % 5], Config.DIFFICULTY_ORDER[s % 3], s, false)
+		g.take_events()
+		var bot := Bot.new()
+		for _t in 12:
+			if g.phase != "player":
+				break
+			var before := _snapshot(g)
+			for i in g.hand.size():
+				for mode in ["normal", "sneak_move", "sneak_quiet", "rune_key"]:
+					g.why_not(i, mode)
+					g.preview(i, mode, -1)
+					if g.needs_target(g.hand[i], mode):
+						for r in g.move_options(g.hand[i], mode):
+							g.preview(i, mode, r)
+			g.knight_public()
+			check(_snapshot(g) == before, "seed %d: previews changed the game state" % s)
+			bot.play_turn(g)
+			g.take_events()
+
+	var g2 = _game()
+	g2.noise = 2
+	_set_hand(g2, ["dash", "search"])
+	var opts: Array = g2.move_options("dash", "normal")
+	var p: Dictionary = g2.preview(0, "normal", opts[0])
+	check(str(p["warn"]).contains("hear you"), "Dash preview warns that Noise 3 will be heard on Normal")
+	g2.shards = 1
+	g2.player_room = g2.castle.seals[0]
+	_set_hand(g2, ["activate", "search"])
+	check(g2.why_not(0, "normal") == "Needs 2 Shards (you have 1).", "Activate reason names the Shards missing")
+	check(g2.why_not(1, "normal") == "You can't search a Seal room.", "Search reason on a Seal")
+	g2.search_bonus = 1
+	g2.player_room = g2.castle.neighbors(g2.castle.seals[0])[0]
+	if g2.is_searchable(g2.player_room):
+		var ps: Dictionary = g2.preview(1, "normal")
+		check(str(ps["will"]).contains("can't fail") and str(ps["might"]).contains("Die 1-4: 1 Shard") and str(ps["might"]).contains("Die 5-6"), "Search preview applies the +1 bonus")

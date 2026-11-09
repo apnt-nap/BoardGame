@@ -217,7 +217,7 @@ func can_play(i: int, mode: String) -> bool:
 		"activate":
 			return unrestored_seal_here() >= 0 and shards >= activate_cost(false)
 		"hide":
-			return noise > 0
+			return true  # playable at Noise 0 too: a silent wait (Noise never drops below 0)
 	return false
 
 
@@ -269,14 +269,14 @@ func _search() -> void:
 	search_bonus = 0
 	if roll <= 1:
 		search_bonus = 1
-		_ev("dice", "Search roll %d: you knock over a candlestick! (+1 on your next Search)" % roll, {"roll": natural, "ok": false})
+		_ev("dice", "Search roll %d: you knock over a candlestick! (+1 on your next Search)" % roll, {"roll": natural, "total": roll, "ok": false})
 		add_noise(1, player_room)
 		return
 	searched[player_room] = true
 	# 2-5: 1 Shard. 6: 1 Shard and a treasure (modified roll, so a natural 5 + bonus counts).
 	shards += 1
 	stats["shards"] += 1
-	_ev("dice", "Search roll %d: 1 Rune Shard%s." % [roll, " and a treasure" if roll >= 6 else ""], {"roll": natural, "ok": true})
+	_ev("dice", "Search roll %d: 1 Rune Shard%s." % [roll, " and a treasure" if roll >= 6 else ""], {"roll": natural, "total": roll, "ok": true})
 	_ev("shard", "+1 Shard", {"amount": 1})
 	if roll >= 6:
 		_gain_treasure()
@@ -591,3 +591,137 @@ func _damage(text: String) -> void:
 	_ev("damage", "%s -1 Health." % text)
 	if health <= 0:
 		_lose("The Cursed Knight claims another soul for Blackthorn Keep.")
+
+
+# ------------------------------------------------------------------ read-only previews (UI)
+# Nothing below changes state or touches the RNG. The UI uses these to explain an action
+# before it is confirmed. They only use public information: never the Knight's pre-rolled die,
+# its random Search pick or its Patrol route.
+
+## Lowest natural die that keeps an encounter HIDE safe on this difficulty.
+func hide_safe_min() -> int:
+	return 5 if diff["checks_hiding"] else 4
+
+
+## Why card `i` cannot be played in `mode` right now ("" = it can, or it is not your turn).
+func why_not(i: int, mode: String) -> String:
+	if phase != "player" or i < 0 or i >= hand.size() or can_play(i, mode):
+		return ""
+	var card: String = hand[i]
+	var si: int = castle.seal_index(player_room)
+	if mode == "rune_key":
+		if not rune_key_ready:
+			return "The Rune Key is already used."
+		if si < 0:
+			return "Stand on an unrestored Seal."
+		if restored[si]:
+			return "This Seal is already restored."
+		return "Needs 1 Shard (you have %d)." % shards
+	match card:
+		"search":
+			if si >= 0:
+				return "You can't search a Seal room."
+			return "This room was already searched."
+		"activate":
+			if si < 0:
+				return "Stand on an unrestored Seal."
+			if restored[si]:
+				return "This Seal is already restored."
+			return "Needs %d Shards (you have %d)." % [activate_cost(false), shards]
+	return ""
+
+
+## What playing card `i` in `mode` (to `target` for moves; -1 = not chosen yet) would do.
+## {"will": [certain results], "warn": [certain dangers], "might": [dice and the Knight's move]}
+func preview(i: int, mode: String, target: int = -1) -> Dictionary:
+	var out := {"will": [], "warn": [], "might": []}
+	if phase != "player" or i < 0 or i >= hand.size():
+		return out
+	var card: String = hand[i]
+	var hunt_at: int = diff["hunt_at"]
+	var new_noise := noise
+	var end_room := player_room
+	if needs_target(card, mode):
+		if target < 0:
+			out["will"].append("Choose a highlighted room.")
+		else:
+			end_room = target
+			var d: int = castle.distance(player_room, target)
+			out["will"].append("Move to %s (%d room%s)%s." % [room_name(target), d, "" if d == 1 else "s", ", silently" if card != "dash" or mode == "sneak_move" else ""])
+			if card == "dash" and mode == "normal":
+				new_noise = mini(Config.MAX_NOISE, noise + 1)
+				out["will"].append("Noise %d -> %d. The marker lands in %s." % [noise, new_noise, room_name(target)])
+	elif mode == "sneak_quiet" or (mode == "normal" and card == "hide"):
+		new_noise = maxi(0, noise - (1 if mode == "sneak_quiet" else 2))
+		if noise == 0:
+			out["will"].append("Stay here and wait silently. Noise stays 0.")
+		else:
+			out["will"].append("Stay here. Noise %d -> %d." % [noise, new_noise])
+		if noise >= hunt_at and new_noise < hunt_at:
+			out["will"].append("It loses your sound and will check where you are now.")
+	elif card == "search" and mode == "normal":
+		var bonus := search_bonus
+		var fail_max := 1 - bonus        # natural rolls up to this fail
+		var treasure_min := 6 - bonus    # natural rolls from this also give a treasure
+		if bonus > 0:
+			out["will"].append("Search +1 ready: this roll can't fail.")
+		else:
+			var fail_noise := mini(Config.MAX_NOISE, noise + 1)
+			out["might"].append("Die 1: fail. Noise %d -> %d, marker here, the room stays searchable, next Search +1." % [noise, fail_noise])
+			if fail_noise >= hunt_at and noise < hunt_at:
+				out["warn"].append("On a 1 the Knight will hear you.")
+		out["might"].append("Die %d-%d: 1 Shard." % [fail_max + 1, treasure_min - 1])
+		out["might"].append("Die %s: 1 Shard and a treasure." % (str(treasure_min) if treasure_min == 6 else "%d-6" % treasure_min))
+		if treasures.size() >= Config.MAX_TREASURES:
+			out["warn"].append("Pack full: a treasure found now is lost.")
+	elif card == "activate" and (mode == "normal" or mode == "rune_key"):
+		var si := unrestored_seal_here()
+		var cost := activate_cost(mode == "rune_key")
+		out["will"].append("Spend %d Shard%s (you have %d). Seal %s is restored." % [cost, "" if cost == 1 else "s", shards, char(65 + maxi(si, 0))])
+		if seals_restored() == 2:
+			out["will"].append("This is the third Seal: you win.")
+			return out
+		out["will"].append("A doorway shifts somewhere in the Keep.")
+		if seals_restored() == 1:
+			out["will"].append("Two special rooms will be corrupted.")
+		out["warn"].append("Signal: the Knight is drawn to this room.")
+	if new_noise >= hunt_at:
+		out["warn"].append("The Knight will hear you and know your room.")
+	elif new_noise == hunt_at - 1 and new_noise > noise:
+		out["warn"].append("1 more Noise and it hears you.")
+	if diff["sight"] > 0 and end_room != knight.room and castle.in_sight(knight.room, end_room, diff["sight"]):
+		out["warn"].append("It can see %s from where it stands." % ("this room" if end_room == player_room else room_name(end_room)))
+	if end_room == knight.room:
+		out["warn"].append("The Knight is in that room.")
+	if knight.skip_turns > 0:
+		out["might"].append("The Knight is stunned and loses its next turn.")
+	elif knight.fixed_move() or knight.signal_room >= 0:
+		out["might"].append("Then the Knight moves (it moves every turn on %s)." % diff["name"] if knight.fixed_move() else "Then the Knight moves toward the signal.")
+	else:
+		out["might"].append("Then the Knight moves on a die roll of %d-6." % diff["move_min"])
+	return out
+
+
+## What the player can know about the Knight's intent. `arrow` is true only when its target is
+## public: you (Hunt), the noise marker on the map, or a Seal signal.
+func knight_public() -> Dictionary:
+	var k = knight
+	var out := {"kind": "patrol", "text": "Patrolling the Seals.", "arrow": false}
+	match k.state:
+		"HUNT":
+			out = {"kind": "hear", "text": "It can hear you. It knows your room.", "arrow": true} if k.charging else {"kind": "see", "text": "It can see you.", "arrow": true}
+		"INVESTIGATE":
+			if k.signal_room >= 0 and k.target == k.signal_room:
+				var si: int = castle.seal_index(k.signal_room)
+				out = {"kind": "signal", "text": "Drawn to the signal at %s." % ("Seal " + char(65 + si) if si >= 0 else room_name(k.signal_room)), "arrow": true}
+			elif token >= 0 and k.target == token:
+				out = {"kind": "marker", "text": "Investigating the noise marker in %s." % room_name(token), "arrow": true}
+			else:
+				out = {"kind": "memory", "text": "Heading to where it last heard you.", "arrow": false}
+		"SEARCH":
+			out = {"kind": "search", "text": "Searching the rooms around %s." % room_name(k.search_center), "arrow": false}
+	if k.skip_turns > 0:
+		out["kind"] = "stunned"
+		out["text"] = "Stunned: it loses its next turn."
+		out["arrow"] = false
+	return out

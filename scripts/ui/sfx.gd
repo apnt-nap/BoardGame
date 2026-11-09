@@ -29,6 +29,7 @@ const SYNTH := {
 var _cache := {}
 var _players: Array = []
 var muted := false
+var volume := 0.8   # 0..1, set from Settings
 
 
 func _ready() -> void:
@@ -45,6 +46,9 @@ func play(name: String) -> void:
 	var stream: AudioStream = _get_stream(name)
 	if stream == null:
 		return
+	var db := linear_to_db(maxf(volume, 0.001)) - 6.0
+	for p in _players:
+		p.volume_db = db
 	for p in _players:
 		if not p.playing:
 			p.stream = stream

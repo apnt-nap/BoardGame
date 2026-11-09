@@ -52,7 +52,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 | Dash | 2 | Move up to 3 rooms. Noise +1 in total, the token goes to where you stop. |
 | Search | 6 | Not on a Seal. D6: 1 fail (+1 Noise, token here) · 2–5 one Shard · 6 one Shard and a Minor Treasure (the miss bonus counts, so a 5 after a failed Search also finds one). Each room can be searched successfully once. |
 | Activate | 4 | On an unrestored Seal: spend 2 Shards and the Seal is restored. No roll, it always works. |
-| Hide | 2 | Stay. Noise −2 (needs Noise above 0). |
+| Hide | 2 | Stay. Noise −2, never below 0 (playable at Noise 0 as a silent wait). |
 
 - **Sneak:** any card can be played face-down to *move 1 room silently* or to *keep still* (Noise −1).
   You never have a dead turn.
@@ -68,12 +68,18 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
   **HIDE** (1–3: −1 Health and flee; 4–6: safe, but it's still in the room), or use an item.
   Potion, Ward Charm and Ration can be used first, and then you still choose.
 
-**Reading the Knight.** The icon above it shows its state: `~` Patrol, `?` Investigate, `!` Hunt,
-`?!` Search. The arrow shows its next step. Rooms tinted red are inside its line of sight (Normal/Hard): only straight down a row or column through open doorways, never around a corner or through a wall.
-The orange token is the last noise it heard.
+**Reading the Knight.** The badge above it and the Knight panel show what it is doing, as an icon and a
+word: Patrol (loop), Investigate (question mark, marker pin or signal rings), Hunt (ear when it hears you, eye
+when it sees you), Search (magnifier), Stunned (stars). Its heading arrow appears only when you could know its
+target: when it hunts you, walks to the noise marker, or follows a Seal signal. It never shows during Patrol or
+Search. Hatched rooms with an eye are in its line of sight (Normal/Hard): straight down a row or column through
+open doorways, never around a corner. The orange pin is the noise marker.
 
-**Controls.** Mouse for everything · `1`/`2` play a card · `Esc` cancels a move · **`F1` shows the Knight's
-mind** (state, memory, pre-rolled die, planned route, recent decisions) · `M` mutes.
+**Controls.** Click a card to see a preview of what will happen, then click a highlighted room (moves) or the
+card again (everything else) to confirm. `1`/`2` pick a card · `Space` confirms · `Esc` or right-click
+cancels, or opens the pause menu · `R` redraws · `Tab` steps through reachable rooms · `M` mutes.
+Settings: effects volume, reduced motion, faster animations, larger text, and one-click play (confirm off).
+In debug builds only, `F1` shows the Knight's mind (state, memory, pre-rolled die, planned route, decisions).
 
 **Heroes and unlocks** (saved in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\profile.cfg`):
 
@@ -112,7 +118,7 @@ next normal turn the Knight heads for that room (not for you), 2 rooms per turn 
 sees you, which still comes first and cancels the signal. A Lantern stun skips the turn but keeps the signal. If it
 reaches the Seal and you're gone, it starts searching there. A newer signal replaces an older one. The third Seal
 wins at once, with no signal. Every decision
-is logged with its reason, both on screen (F1) and in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\knight_log.txt`.
+is logged with its reason, both in the debug overlay (F1, debug builds) and in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\knight_log.txt`.
 
 | Difficulty | Moves on | Memory | Hunts at Noise | Steps when charging | Search | Sight | Hide check |
 |---|---|---|---|---|---|---|---|
@@ -140,8 +146,11 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts
 UI smoke test (plays whole games through the real interface and saves screenshots to `build/shots/`):
 
 ```
-Godot_v4.7.2-stable_win64_console.exe --path . --script res://scripts/tests/ui_smoke.gd -- --games 2
+Godot_v4.7.2-stable_win64_console.exe --path . --script res://scripts/tests/ui_smoke.gd -- --games 3
 ```
+
+It also saves the title, hero select, difficulty, How to play and Settings screens, the main screen, a move
+preview, an encounter, a restored Seal and each end screen.
 
 ## Playtest
 
@@ -161,32 +170,37 @@ scripts/core/             game logic, no visuals (shared by the game and the sim
   game.gd                 turn loop, cards, dice, noise, encounters, items
   bot.gd                  simulated player
 scripts/ui/               visuals only
-  palette.gd              colours, icons, room names: reskin here
+  palette.gd              storybook colours, card categories, art names, room names: reskin here
+  art.gd                  loads art/ and fonts/ (missing files fall back to shapes drawn in code)
+  icon.gd                 small icons drawn in code (hearts, shards, Knight states, card categories)
   board_view.gd           draws the castle and animates the pieces
-  main.gd                 menu, HUD, encounter, end screen, F1 debug, event playback
+  main.gd                 title, hero and difficulty select, HUD, previews, encounter, end, pause,
+                          settings, How to play, event playback
+  settings.gd             player settings (user://settings.cfg)
   sfx.gd                  sound hooks (placeholder synth tones)
   profile.gd              unlock progress
 scripts/sim/simulate.gd   headless balance simulation
 scripts/tests/ui_smoke.gd UI smoke test
-scripts/tools/import_art.gd cuts the painted art out of Game Design.pdf
-art/                      painted art used by the game
+scripts/tools/import_art.gd cuts the art out of "Game Presentation - Final.pdf"
+art/                      storybook art used by the game
+fonts/                    Cinzel Decorative, Cinzel, Crimson Pro (SIL Open Font License, see fonts/OFL.txt)
 docs/                     balance results
 ```
 
-**Art.** The painted art comes from `Game Design.pdf`: room tiles, Seal tokens, the player and Knight miniatures,
-hero portraits, card, item and encounter illustrations, and HUD tokens. It is cut into `art/` by a script, so it can be redone
-after the PDF changes:
+**Art.** The art comes from the deck "Game Presentation - Final.pdf": the Seal crystal shrine, the Cursed
+Knight, the five heroes, the item icons, the action-card illustrations, the parchment and the castle paintings.
+It is cut into `art/` by a script, so it can be redone after the deck changes:
 
 ```
-mutool extract "Game Design.pdf"            (run inside build/art_src/)
-Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts/tools/import_art.gd
+mutool extract "Game Presentation - Final.pdf"     (run inside build/ref_images/)
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://scripts/tools/import_art.gd -- --contact
 ```
 
-Crop rectangles are listed at the top of `scripts/tools/import_art.gd`. Which picture goes where (room tiles per room type,
-card art, hero portraits) is set in `scripts/ui/palette.gd`. Any element whose file is missing falls back to the flat vector style.
-Thief has no portrait in the PDF yet; it borrows the Hide card art.
+Crops are listed at the top of `scripts/tools/import_art.gd`; which file is used where is set in
+`scripts/ui/palette.gd`. Rooms, doorways, special-room props, icons and the Seal states are drawn in code in the
+same thick-outline style, because the deck has no art for them. Card names and rules are text, not part of the
+images, so they stay editable.
 
-**Reskinning.** Every colour is in `scripts/ui/palette.gd`. To use painted icons, map a room type to a texture
-in `ICON_TEXTURES` (for example `"chapel": "res://art/chapel.png"`). For real sounds, drop
+**Reskinning.** Every colour is in `scripts/ui/palette.gd`. For real sounds, drop
 `res://audio/<hook>.ogg` or `.wav` files named after the hooks in `sfx.gd` (`seal`, `damage`, `encounter`,
 `knight_step`, `bell`, `win`, `lose`, …). They replace the synthesized placeholders automatically.

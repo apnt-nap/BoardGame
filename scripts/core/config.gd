@@ -27,7 +27,7 @@ const CARDS := {
 	"dash":     {"name": "Dash",     "text": "Move up to 3 rooms. Noise +1 (token at the end room)."},
 	"search":   {"name": "Search",   "text": "Roll D6: 1 fail (+1 Noise, next Search +1) | 2-5 one Shard | 6 one Shard + a Treasure."},
 	"activate": {"name": "Activate", "text": "On an unrestored Seal: spend 2 Shards to restore it. Always succeeds."},
-	"hide":     {"name": "Hide",     "text": "Stay. Noise -2."},
+	"hide":     {"name": "Hide",     "text": "Stay. Noise -2 (never below 0)."},
 }
 
 const TREASURES := ["ward_charm", "old_shield", "ration", "smoke_vial"]

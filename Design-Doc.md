@@ -2,7 +2,7 @@
 
 > **Playtest rules (build v1.1, 8 Nov 2026).** These override anything below that disagrees.
 >
-> - **Cards** (deck unchanged: 2 Explore, 2 Dash, 6 Search, 4 Activate, 2 Hide). Explore: move silently up to 2 rooms. Dash: move up to 3 rooms, Noise +1 in total, token at the destination. Hide card: stay, Noise −2 (the encounter HIDE is unchanged). Sneak (any card): move 1 room silently, or stay and lower Noise by 1 (allowed at Noise 0). Noise stays between 0 and 5.
+> - **Cards** (deck unchanged: 2 Explore, 2 Dash, 6 Search, 4 Activate, 2 Hide). Explore: move silently up to 2 rooms. Dash: move up to 3 rooms, Noise +1 in total, token at the destination. Hide card: stay, Noise −2, also playable at Noise 0 as a silent wait (the encounter HIDE is unchanged). Sneak (any card): move 1 room silently, or stay and lower Noise by 1 (allowed at Noise 0). Noise stays between 0 and 5.
 > - **Search** (not on a Seal, each room once): D6 1 fail, Noise +1 and token here · 2–5 one Shard · 6 one Shard and a treasure. A fail gives +1 to the next Search only (no stacking, capped at 6).
 > - **Activate:** on an unrestored Seal with 2 Shards, it always succeeds. No roll, no miss bonus, no Noise change, no Focus. The third Seal still wins at once.
 > - **Focus is gone.** Instead you get one free redraw per run, before playing your card.
