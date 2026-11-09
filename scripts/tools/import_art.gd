@@ -1,61 +1,49 @@
 extends SceneTree
-## Cuts the painted art out of "Game Design.pdf" into res://art/*.png.
-## 1) Extract the PDF's images:  mutool extract "Game Design.pdf"   (into build/art_src/)
+## Cuts the storybook art out of "Game Presentation - Final.pdf" into res://art/*.png.
+## 1) Extract the PDF's images into build/ref_images/:
+##      cd build/ref_images && mutool extract "../../../Game Presentation - Final.pdf"
 ## 2) Run:  godot --headless --path . --script res://scripts/tools/import_art.gd
-## Source image ids are the object numbers mutool gives them (image-0116.png ...).
+##    Add `-- --contact` to also write build/art_contact.png (all outputs on one sheet).
+## Source ids are mutool's object numbers (image-0044.png ...). Canva stores transparency as a
+## separate grayscale image (the SMask), which is merged back in as alpha.
 
-const SRC := "res://build/art_src/image-0%d.png"
+const SRC := "res://build/ref_images/image-%04d.png"
 const OUT := "res://art/%s.png"
 
-## name: [source id, alpha-mask id (0 = none), Rect2i crop, max size]
+## name: [source id, alpha-mask id (0 = none), crop Rect2i (empty = whole image), longest side]
+## Images with a mask are trimmed to their visible pixels after cropping.
 const CROPS := {
-	# 3x3 castle map (rooms)
-	"room_dungeon":   [116, 0, Rect2i(40, 78, 400, 232), 400],
-	"room_throne":    [116, 0, Rect2i(472, 78, 400, 232), 400],
-	"room_seal_blue": [116, 0, Rect2i(902, 78, 400, 232), 400],
-	"room_armory":    [116, 0, Rect2i(40, 383, 400, 232), 400],
-	"room_hall":      [116, 0, Rect2i(472, 383, 400, 232), 400],
-	"room_forge":     [116, 0, Rect2i(902, 383, 400, 232), 400],
-	"room_seal_green":[116, 0, Rect2i(40, 688, 400, 232), 400],
-	"room_library":   [116, 0, Rect2i(472, 688, 400, 232), 400],
-	"room_seal_red":  [116, 0, Rect2i(902, 688, 400, 232), 400],
-	"map":            [116, 0, Rect2i(0, 0, 1342, 950), 1342],
-	# Action card illustrations
-	"card_explore":   [137, 0, Rect2i(130, 88, 390, 135), 500],
-	"card_search":    [137, 0, Rect2i(560, 100, 225, 155), 400],
-	"card_activate":  [137, 0, Rect2i(28, 440, 250, 148), 400],
-	"card_dash":      [137, 0, Rect2i(660, 440, 395, 130), 500],
-	"card_hide":      [141, 0, Rect2i(28, 100, 280, 190), 400],
-	"enc_run":        [146, 0, Rect2i(22, 225, 290, 160), 400],
-	"enc_hide":       [146, 0, Rect2i(333, 225, 262, 160), 400],
-	"enc_item":       [146, 0, Rect2i(612, 225, 292, 160), 400],
-	"enc_header":     [146, 0, Rect2i(0, 0, 330, 175), 330],
-	# Hero portraits
-	"hero_ranger":    [124, 0, Rect2i(70, 75, 290, 225), 345],
-	"hero_knight":    [124, 0, Rect2i(446, 75, 290, 225), 345],
-	"hero_mage":      [124, 0, Rect2i(820, 75, 290, 225), 345],
-	"hero_alchemist": [124, 0, Rect2i(1194, 75, 290, 225), 345],
-	# Item illustrations
-	"item_lantern":   [152, 0, Rect2i(26, 100, 205, 188), 256],
-	"item_silence":   [152, 0, Rect2i(478, 100, 210, 188), 256],
-	"item_potion":    [152, 0, Rect2i(26, 400, 205, 195), 256],
-	"item_shield":    [152, 0, Rect2i(478, 400, 210, 195), 256],
-	# Tokens (with transparency)
-	"tok_health":     [148, 230, Rect2i(0, 0, 218, 160), 160],
-	"tok_shards":     [148, 230, Rect2i(217, 0, 218, 160), 160],
-	"tok_noise":      [148, 230, Rect2i(0, 166, 218, 160), 160],
-	"tok_turn":       [148, 230, Rect2i(217, 166, 218, 160), 160],
-	"seal_a":         [161, 235, Rect2i(0, 30, 237, 295), 220],
-	"seal_b":         [161, 235, Rect2i(237, 30, 237, 295), 220],
-	"seal_c":         [161, 235, Rect2i(473, 30, 237, 295), 220],
-	"mini_knight":    [162, 236, Rect2i(0, 0, 165, 268), 220],
-	"mini_player":    [163, 237, Rect2i(0, 0, 170, 268), 220],
+	"seal_shrine":      [44, 298, Rect2i(), 360],
+	"knight":           [54, 315, Rect2i(), 520],
+	"hero_mage":        [59, 325, Rect2i(), 400],
+	"hero_knight":      [60, 326, Rect2i(), 400],
+	"hero_thief":       [61, 327, Rect2i(), 400],
+	"hero_alchemist":   [62, 328, Rect2i(), 400],
+	"hero_ranger":      [63, 329, Rect2i(), 400],
+	# 3x2 icon sheet, 256 px cells
+	"item_lantern":     [68, 339, Rect2i(0, 0, 256, 256), 200],
+	"item_potion":      [68, 339, Rect2i(256, 0, 256, 256), 200],
+	"item_scroll":      [68, 339, Rect2i(512, 0, 256, 256), 200],
+	"item_rune_key":    [68, 339, Rect2i(0, 256, 256, 256), 200],
+	"item_smoke":       [68, 339, Rect2i(256, 256, 256, 256), 200],
+	"item_ward_charm":  [68, 339, Rect2i(512, 256, 256, 256), 200],
+	# Illustration window only (no title, rule text, label or frame)
+	"cardart_explore":  [77, 0, Rect2i(52, 150, 460, 268), 300],
+	"cardart_dash":     [78, 0, Rect2i(52, 150, 460, 268), 300],
+	"cardart_search":   [79, 0, Rect2i(52, 150, 460, 186), 300],
+	"cardart_activate": [80, 0, Rect2i(52, 150, 460, 246), 300],
+	"cardart_hide":     [81, 0, Rect2i(52, 150, 460, 260), 300],
+	# The parchment's mask object is unreadable in the PDF, so take the inner sheet without torn edges.
+	"parchment":        [304, 0, Rect2i(170, 170, 2577, 1760), 1400],
+	"menu_bg":          [49, 0, Rect2i(), 1600],
+	"title_bg":         [33, 0, Rect2i(), 1600],
 }
 
 
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute("res://art")
 	var cache := {}
+	var made := []
 	for name in CROPS:
 		var spec: Array = CROPS[name]
 		var key := "%d_%d" % [spec[0], spec[1]]
@@ -64,17 +52,23 @@ func _init() -> void:
 		var src: Image = cache[key]
 		if src == null:
 			continue
-		var rect: Rect2i = spec[2].intersection(Rect2i(Vector2i.ZERO, src.get_size()))
-		var img := src.get_region(rect)
-		var max_side: int = spec[3]
-		var longest := maxi(img.get_width(), img.get_height())
-		if longest > max_side:
-			var s := float(max_side) / longest
-			img.resize(int(img.get_width() * s), int(img.get_height() * s), Image.INTERPOLATE_LANCZOS)
+		var rect: Rect2i = spec[2]
+		if rect.size == Vector2i.ZERO:
+			rect = Rect2i(Vector2i.ZERO, src.get_size())
+		var img := src.get_region(rect.intersection(Rect2i(Vector2i.ZERO, src.get_size())))
 		if spec[1] != 0:
 			img = _trim(img)
+		var longest := maxi(img.get_width(), img.get_height())
+		if longest > spec[3]:  # downsize only, never upscale
+			var s := float(spec[3]) / longest
+			img.resize(roundi(img.get_width() * s), roundi(img.get_height() * s), Image.INTERPOLATE_LANCZOS)
+		if spec[1] == 0:
+			img.convert(Image.FORMAT_RGB8)
 		img.save_png(OUT % name)
-		print("art/%s.png  %s" % [name, img.get_size()])
+		made.append([name, img])
+		print("art/%s.png  %dx%d" % [name, img.get_width(), img.get_height()])
+	if "--contact" in OS.get_cmdline_user_args():
+		_contact(made)
 	quit()
 
 
@@ -86,15 +80,53 @@ func _load(id: int, mask_id: int) -> Image:
 	img.convert(Image.FORMAT_RGBA8)
 	if mask_id != 0:
 		var mask := Image.load_from_file(SRC % mask_id)
-		for y in img.get_height():
-			for x in img.get_width():
-				var c := img.get_pixel(x, y)
-				c.a = mask.get_pixel(x, y).r
-				img.set_pixel(x, y, c)
+		if mask == null or mask.get_size() != img.get_size():
+			push_error("Bad mask %d for image %d" % [mask_id, id])
+			return img
+		mask.convert(Image.FORMAT_L8)
+		var px := img.get_data()
+		var m := mask.get_data()
+		for i in m.size():
+			px[i * 4 + 3] = m[i]
+		img.set_data(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8, px)
 	return img
 
 
-## Crop away fully transparent borders.
+## Crop away (nearly) transparent borders, ignoring faint glow below alpha 8.
 func _trim(img: Image) -> Image:
-	var used := img.get_used_rect()
-	return img.get_region(used) if used.size.x > 0 else img
+	var w := img.get_width()
+	var h := img.get_height()
+	var px := img.get_data()
+	var x0 := w
+	var y0 := h
+	var x1 := -1
+	var y1 := -1
+	for y in h:
+		for x in w:
+			if px[(y * w + x) * 4 + 3] >= 8:
+				x0 = mini(x0, x)
+				x1 = maxi(x1, x)
+				y0 = mini(y0, y)
+				y1 = maxi(y1, y)
+	return img.get_region(Rect2i(x0, y0, x1 - x0 + 1, y1 - y0 + 1)) if x1 >= 0 else img
+
+
+## Every output on a checkerboard (so transparency is visible), 6 per row, 260 px cells.
+func _contact(made: Array) -> void:
+	var cell := 260
+	var cols := 6
+	var rows := ceili(made.size() / float(cols))
+	var sheet := Image.create(cols * cell, rows * cell, false, Image.FORMAT_RGBA8)
+	for y in sheet.get_height():
+		for x in sheet.get_width():
+			sheet.set_pixel(x, y, Color(0.8, 0.8, 0.8) if ((x / 16) + (y / 16)) % 2 == 0 else Color(0.55, 0.55, 0.6))
+	for i in made.size():
+		var img: Image = made[i][1].duplicate()
+		img.convert(Image.FORMAT_RGBA8)
+		var s := minf(float(cell - 10) / img.get_width(), float(cell - 10) / img.get_height())
+		img.resize(maxi(1, int(img.get_width() * s)), maxi(1, int(img.get_height() * s)), Image.INTERPOLATE_BILINEAR)
+		var at := Vector2i((i % cols) * cell + 5, (i / cols) * cell + 5)
+		sheet.blend_rect(img, Rect2i(Vector2i.ZERO, img.get_size()), at)
+	DirAccess.make_dir_recursive_absolute("res://build")
+	sheet.save_png("res://build/art_contact.png")
+	print("build/art_contact.png")
