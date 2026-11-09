@@ -51,7 +51,9 @@ static func font(file: String, weight: int = 0) -> Font:
 
 
 static func title_font() -> Font:
-	return font("CinzelDecorative-Bold.ttf")
+	# Cinzel Decorative swaps in swash letters ("CHOOSE" showed a joined OO, "HERO" a barred H)
+	# even with ligatures off, which reads as typos; heavy Cinzel keeps the same carved look.
+	return font("Cinzel-Variable.ttf", 900)
 
 
 static func heading_font() -> Font:

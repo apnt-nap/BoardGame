@@ -881,6 +881,7 @@ func _build_encounter() -> void:
 	shade.anchor_right = 1.0
 	shade.anchor_bottom = 1.0
 	shade.offset_left = -800
+	shade.offset_top = 90  # keep the status bar readable during the encounter
 	layer.add_child(shade)
 	var v := _vbox(10)
 	var panel := _parch(v, 20, P.KNIGHT_VISOR, 4)
@@ -1185,7 +1186,7 @@ func _bump(node: Control, col: Color) -> void:
 	if node == null or settings.reduced_motion:
 		return
 	node.pivot_offset = node.size * 0.5
-	var tw := node.create_tween()
+	var tw: Tween = node.create_tween()
 	node.modulate = col
 	tw.set_parallel(true)
 	tw.tween_property(node, "modulate", Color.WHITE, 0.5)
@@ -1315,7 +1316,7 @@ func _handle(e: Dictionary) -> void:
 			if settings.reduced_motion:
 				board.knight_dust = 1.0
 			else:
-				var tw := board.create_tween()
+				var tw: Tween = board.create_tween()
 				tw.tween_property(board, "knight_dust", 1.0, 1.2)
 		"lost":
 			sfx.play("lose")

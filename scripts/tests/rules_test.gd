@@ -812,4 +812,4 @@ func _test_previews_read_only() -> void:
 	g2.player_room = g2.castle.neighbors(g2.castle.seals[0])[0]
 	if g2.is_searchable(g2.player_room):
 		var ps: Dictionary = g2.preview(1, "normal")
-		check(str(ps["will"]).contains("can't fail") and str(ps["might"]).contains("Die 1-4: 1 Shard") and str(ps["might"]).contains("Die 5-6"), "Search preview applies the +1 bonus")
+		check(" ".join(PackedStringArray(ps["will"])).contains("can't fail") and str(ps["might"]).contains("Die 1-4: 1 Shard") and str(ps["might"]).contains("Die 5-6"), "Search preview applies the +1 bonus")

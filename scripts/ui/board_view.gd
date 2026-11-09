@@ -272,7 +272,7 @@ func _draw() -> void:
 		var pp: Vector2 = _pos["player"]
 		var ptex := Art.tex(P.HERO_ART.get(game.hero, ""))
 		if ptex != null:
-			_draw_mini(ptex, pp, c * 0.56, P.AMBER)
+			_draw_mini(ptex, pp, c * 0.48, P.AMBER)
 		else:
 			draw_circle(pp, c * 0.13, P.AMBER)
 			draw_arc(pp, c * 0.13, 0, TAU, 24, P.INK, 3.0)
@@ -284,7 +284,7 @@ func _draw() -> void:
 		if kstate == "HUNT" and knight_dust <= 0.0:
 			draw_circle(kp + Vector2(0, -c * 0.12), c * 0.26 * (1.0 + 0.08 * _wave(9.0)), Color(kcol, 0.22))
 		if ktex != null:
-			_draw_mini(ktex, kp + Vector2(0, knight_dust * c * 0.15), c * 0.64, kcol, a)
+			_draw_mini(ktex, kp + Vector2(0, knight_dust * c * 0.15), c * 0.54, kcol, a)
 		else:
 			draw_circle(kp, c * 0.15, Color(P.KNIGHT_ARMOR, a))
 			draw_arc(kp, c * 0.15, 0, TAU, 24, Color(kcol, a), 3.0)
@@ -295,7 +295,7 @@ func _draw() -> void:
 				draw_circle(dpos, c * 0.02 * (1.5 - knight_dust), Color(P.STONE_LIGHT, 1.0 - knight_dust))
 		elif game.phase != "won":
 			# State badge: icon in a coloured disc, plus the word.
-			var bp := kp + Vector2(c * 0.2, -c * 0.62)
+			var bp := kp + Vector2(c * 0.2, -c * 0.54)
 			draw_circle(bp, c * 0.11, kcol)
 			draw_arc(bp, c * 0.11, 0, TAU, 24, P.INK, 2.5)
 			var icon_kind: String = {"PATROL": "patrol", "INVESTIGATE": "question", "HUNT": "eye", "SEARCH": "search"}[kstate]
@@ -386,7 +386,11 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 		name_text = Config.SPECIALS[sp]["name"]
 	var fs := int(c * 0.115)
 	var tc := P.STARLIGHT if not corrupted else Color(P.MOON_TEXT, 0.6)
-	draw_string(body, rect.position + Vector2(7, fs + 3), name_text, HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - c * 0.3, fs, tc)
+	var name_w := rect.size.x - c * 0.3
+	var nfs := fs
+	while nfs > int(fs * 0.7) and body.get_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, -1, nfs).x > name_w:
+		nfs -= 1  # shrink long names ("Scriptorium") instead of clipping them
+	draw_string(body, rect.position + Vector2(7, fs + 3), name_text, HORIZONTAL_ALIGNMENT_LEFT, name_w, nfs, tc)
 	draw_string(body, rect.position + Vector2(rect.size.x - c * 0.26, fs + 3), game.room_name(r), HORIZONTAL_ALIGNMENT_RIGHT, c * 0.22, int(fs * 0.9), Color(P.MOON_TEXT, 0.8))
 
 	var mid := rect.get_center() + Vector2(0, c * 0.06)
