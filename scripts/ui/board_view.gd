@@ -369,7 +369,7 @@ func _draw_room(r: int, c: float, body: Font, head: Font, sight: int, castle) ->
 	# Knight's line of sight: hatched orange plus an eye.
 	if sight > 0 and r != game.knight.room and castle.in_sight(game.knight.room, r, sight) and knight_dust <= 0.0:
 		_hatch(rect, Color(P.SIGHT, 0.4))
-		Icon.draw_icon(self, "eye", rect.position + Vector2(c * 0.13, rect.size.y - c * 0.12), c * 0.08, P.SIGHT)
+		Icon.draw_icon(self, "eye", rect.position + Vector2(rect.size.x * 0.62, rect.size.y - c * 0.12), c * 0.08, P.SIGHT)
 	if _pulse_rooms.has(r):
 		var pr: Array = _pulse_rooms[r]
 		draw_rect(rect, Color(pr[1], 0.35 * minf(1.0, pr[0])))
