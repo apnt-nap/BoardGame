@@ -46,6 +46,7 @@ func new_game(p_hero: String, p_difficulty: String, seed_value: int = 0, log_kni
 	hero = p_hero
 	difficulty = p_difficulty
 	diff = Config.DIFFICULTY[difficulty]
+	health = max_health()
 	if seed_value == 0:
 		rng.randomize()
 	else:
@@ -132,6 +133,11 @@ func turns_left() -> int:
 
 
 ## Turns before midnight on this difficulty.
+## Start and maximum Health on this difficulty (4 on Easy).
+func max_health() -> int:
+	return int(diff.get("health", Config.MAX_HEALTH))
+
+
 func turn_limit() -> int:
 	return int(diff.get("turns", Config.TURN_LIMIT))
 
@@ -342,7 +348,7 @@ func room_action() -> String:
 	var t: String = castle.special_at(player_room)
 	match t:
 		"chapel":
-			return t if not used_once.has(t) and health < Config.MAX_HEALTH else ""
+			return t if not used_once.has(t) and health < max_health() else ""
 		"bell_tower", "armory":
 			return t if not used_once.has(t) else ""
 		"passage":
@@ -414,7 +420,7 @@ func can_use_hero_item() -> bool:
 		"lantern":
 			return phase == "player"
 		"potion":
-			return health < Config.MAX_HEALTH  # in an encounter you still RUN or HIDE afterwards
+			return health < max_health()  # in an encounter you still RUN or HIDE afterwards
 		"silence":
 			return noise > 0 and phase == "player"
 	return false

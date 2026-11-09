@@ -496,11 +496,11 @@ func _test_normal_knight() -> void:
 
 
 func _test_easy_hard_unchanged() -> void:
-	# Easy and Hard use Normal's Knight; only turns, hearing and encounter HIDE differ.
+	# Easy and Hard use Normal's Knight; only turns, health, hearing, sight and encounter HIDE differ.
 	var want := {
-		"easy": {"turns": 42, "hunt_at": 4, "checks_hiding": false},
-		"normal": {"turns": 36, "hunt_at": 3, "checks_hiding": false},
-		"hard": {"turns": 36, "hunt_at": 2, "checks_hiding": true},
+		"easy": {"turns": 42, "health": 4, "hunt_at": 4, "sight": 1, "checks_hiding": false},
+		"normal": {"turns": 36, "health": 3, "hunt_at": 3, "sight": 1, "checks_hiding": false},
+		"hard": {"turns": 34, "health": 3, "hunt_at": 2, "sight": 2, "checks_hiding": true},
 	}
 	var n: Dictionary = Config.DIFFICULTY["normal"]
 	for d in want:
@@ -517,6 +517,12 @@ func _test_easy_hard_unchanged() -> void:
 		check(g.knight.fixed_move(), "%s: the Knight moves every turn (no die)" % d)
 		check(g.turn_limit() == want[d]["turns"] and g.turns_left() == want[d]["turns"], "%s: %d turns before midnight" % [d, want[d]["turns"]])
 		check(g.hide_safe_min() == (5 if want[d]["checks_hiding"] else 4), "%s: encounter HIDE safe minimum" % d)
+		check(g.health == want[d]["health"] and g.max_health() == want[d]["health"], "%s: starts with %d Health" % [d, want[d]["health"]])
+		# Healing tops out at this difficulty's maximum (4 on Easy), not at 3.
+		g.health = want[d]["health"] - 1
+		g.player_room = g.castle.specials.find_key("chapel")
+		check(g.room_action() == "chapel" and g.do_room_action() and g.health == want[d]["health"], "%s: the Chapel heals up to %d" % [d, want[d]["health"]])
+		check(g.room_action() == "", "%s: no Chapel heal at full Health" % d)
 		# Midnight comes after the last turn of this difficulty, not before.
 		g.turn = want[d]["turns"]
 		check(g.turns_left() == 1, "%s: last turn counts down to 1" % d)

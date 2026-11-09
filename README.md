@@ -42,7 +42,7 @@ The exe isn't code-signed, so Windows SmartScreen may show "Windows protected yo
 
 ## How to play
 
-**Goal.** Restore all three Seals (2 Rune Shards each) before your Health hits 0 or midnight (Turn 36 ends; Turn 42 on Easy).
+**Goal.** Restore all three Seals (2 Rune Shards each) before your Health hits 0 or midnight (Turn 36 ends; Turn 42 on Easy, 34 on Hard).
 
 **Your turn.** You hold 2 Action Cards. Play 1; the other is discarded. Then the Knight moves.
 
@@ -121,15 +121,16 @@ wins at once, with no signal. Every decision
 is logged with its reason, both in the debug overlay (F1, debug builds) and in `%APPDATA%\Godot\app_userdata\Curse of Blackthorn Keep\knight_log.txt`.
 
 All three difficulties use the same Knight (moves every turn, 2-turn memory, charges 2 rooms, searches 2 turns,
-sees 1 room in a straight line). Only these change:
+searches 2 turns). Only these change:
 
-| Difficulty | Turns before midnight | Hears you at Noise | Encounter HIDE safe on |
-|---|---|---|---|
-| Easy | 42 | 4 | 4–6 |
-| Normal | 36 | 3 | 4–6 |
-| Hard | 36 | 2 | 5–6 |
+| Difficulty | Turns before midnight | Health | Hears you at Noise | Sees you (rooms in a straight line) | Encounter HIDE safe on |
+|---|---|---|---|---|---|
+| Easy | 42 | 4 | 4 | 1 | 4–6 |
+| Normal | 36 | 3 | 3 | 1 | 4–6 |
+| Hard | 34 | 3 | 2 | 2 | 5–6 |
 
-Health 3, 2 Shards per Seal and 1 damage when caught are the same on every level.
+2 Shards per Seal and 1 damage when caught are the same on every level. Bot test (500 games each, Ranger / Alchemist / Thief):
+Easy 75 / 76 / 78% wins, Normal 52 / 58 / 58%, Hard 29 / 37 / 37%.
 
 ## Balance simulation
 

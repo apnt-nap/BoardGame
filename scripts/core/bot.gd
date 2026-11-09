@@ -45,7 +45,7 @@ func _free_actions(g) -> void:
 	# Hero item.
 	match g.hero_item():
 		"potion":
-			if g.health <= 1 or (g.health < Config.MAX_HEALTH and g.turns_left() < 6):
+			if g.health <= 1 or (g.health < g.max_health() and g.turns_left() < 6):
 				g.use_hero_item()
 		"lantern":
 			if kd <= 1 and g.knight.will_move_next():

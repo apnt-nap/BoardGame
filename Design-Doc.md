@@ -83,17 +83,19 @@ The Knight now guards restored Seals more closely. Each restored Seal is added t
 
 ## Difficulty levels
 
-Every level uses Normal's Knight: it moves every turn with no die, remembers a noise for 2 turns, charges 2 rooms when it hears you, searches for 2 turns and sees 1 room down a straight corridor. A bot test showed the die walk made Hard no harder than Normal (56% vs 52% Ranger wins), so the walk is now the same everywhere and the levels differ only in these settings:
+Every level uses Normal's Knight: it moves every turn with no die, remembers a noise for 2 turns, charges 2 rooms when it hears you, and searches for 2 turns. A bot test showed the die walk made Hard no harder than Normal (56% vs 52% Ranger wins), so the walk is now the same everywhere and the levels differ only in these settings:
 
 | Setting | Easy | Normal | Hard |
 | --- | --- | --- | --- |
-| Turns before midnight | 42 | 36 | 36 |
+| Turns before midnight | 42 | 36 | 34 |
 | Starts hunting at Noise | 4 | 3 | 2 |
+| Sees you (rooms down a straight corridor) | 1 | 1 | 2 |
 | Encounter HIDE is safe on | 4–6 | 4–6 | 5–6 (it checks hiding spots) |
-| Health (start / max) | 3 | 3 | 3 |
+| Health (start / max) | 4 | 3 | 3 |
 | Shards per Seal | 2 | 2 | 2 |
 | Damage when caught | 1 | 1 | 1 |
-| Target player win rate | 65–75% | 45–55% | 25–35% |
+| Target player win rate | 70–80% | 45–55% | 30–40% |
+| Bot result (500 games each: Ranger / Alchemist / Thief) | 75% / 76% / 78% | 52% / 58% / 58% | 29% / 37% / 37% |
 
 The win-rate targets are starting points. Step 4's bot simulation checks them and we tune the numbers until each level lands in its range.
 

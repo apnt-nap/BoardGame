@@ -26,7 +26,7 @@ const CARD_COPY := {
 }
 
 const RULES_PAGES := [
-	["The goal", "seal_shrine", "Restore all three [b]Seals[/b] before midnight (turn 36 ends, 42 on Easy). Each Seal needs [b]2 Rune Shards[/b]. You lose if your Health reaches 0.\n\nThe Cursed Knight walks the Keep. It never knows where you are unless it [b]hears[/b] you or [b]sees[/b] you."],
+	["The goal", "seal_shrine", "Restore all three [b]Seals[/b] before midnight (turn 36 ends; 42 on Easy, 34 on Hard). Each Seal needs [b]2 Rune Shards[/b]. You lose if your Health reaches 0.\n\nThe Cursed Knight walks the Keep. It never knows where you are unless it [b]hears[/b] you or [b]sees[/b] you."],
 	["Your turn", "cardart_explore", "You hold [b]2 cards[/b]. Play one; the other is discarded.\n\n[b]Explore[/b] and [b]Dash[/b] move you. [b]Search[/b] finds Shards. [b]Activate[/b] restores a Seal. [b]Hide[/b] (the card) lowers Noise.\n\n[b]Sneak[/b] lets any card move you 1 room silently, or keep still and lower Noise by 1. Once per run you may [b]redraw[/b] your hand for free."],
 	["Noise and the Knight", "knight", "Dash and failed Searches make [b]Noise[/b] and drop an orange [b]marker[/b]. The Knight walks to the marker.\n\nAt [b]Noise 3[/b] (4 on Easy, 2 on Hard) it hears you and knows your room. It also sees you down a straight corridor of open doorways: [b]hatched rooms[/b] are in its sight.\n\nAfter you act, the Knight moves. Its arrow appears only when you can know where it is going."],
 	["Encounters", "cardart_hide", "If the Knight ends its move in your room, it finds you.\n\n[b]RUN[/b]: flee 1 room, Noise +1. On a die roll of 1-2 you also lose 1 Health.\n[b]HIDE[/b]: on 4-6 (5-6 on Hard) you stay safe and it searches nearby. Otherwise you lose 1 Health and flee.\n\nYour hero item and the Smoke Vial can get you out cleanly."],
@@ -556,13 +556,14 @@ func _build_difficulty() -> void:
 			sfx.play("click")
 			sel_diff = did
 			_refresh_difficulty())
-		var v := _vbox(16)
-		b.add_child(_full(_margin(v, 26)))
+		var v := _vbox(10)  # 8 rows; 16 px gaps pushed the last row onto the card edge
+		b.add_child(_full(_margin(v, 22)))
 		v.add_child(_label(info["name"], 32, P.INK, false, "head"))
 		var moves: String = "Every turn" if info.get("fixed_move", false) else "On a die roll of %d-6" % info["move_min"]
 		var sees: String = "Same room only" if info["sight"] == 0 else "%d room%s in a straight line" % [info["sight"], "" if info["sight"] == 1 else "s"]
 		var rows := [
 			["Turns before midnight", str(info.get("turns", Config.TURN_LIMIT))],
+			["Health", str(info.get("health", Config.MAX_HEALTH))],
 			["Knight moves", moves],
 			["Hears you at Noise", str(info["hunt_at"])],
 			["Sees you", sees],
@@ -623,7 +624,10 @@ func _build_game() -> void:
 	var hb := _hbox(4)
 	bar.add_child(hb)
 	ui["hearts"] = []
-	for i in Config.MAX_HEALTH:
+	var most := 0
+	for d in Config.DIFFICULTY:
+		most = maxi(most, int(Config.DIFFICULTY[d].get("health", Config.MAX_HEALTH)))
+	for i in most:  # one heart per point on the roomiest difficulty; extras hide on the others
 		var hi := Icon.make("heart", P.HEALTH, 26)
 		hb.add_child(hi)
 		ui["hearts"].append(hi)
@@ -1638,9 +1642,10 @@ func _refresh() -> void:
 	var hunt_at: int = game.diff["hunt_at"]
 
 	# Top bar
-	for i in Config.MAX_HEALTH:
+	for i in ui["hearts"].size():
+		ui["hearts"][i].visible = i < game.max_health()
 		ui["hearts"][i].set_icon("heart", P.HEALTH, i < game.health)
-	ui["health_l"].text = "Health %d/%d" % [game.health, Config.MAX_HEALTH]
+	ui["health_l"].text = "Health %d/%d" % [game.health, game.max_health()]
 	ui["noise_pips"].value = game.noise
 	ui["noise_pips"].notch = hunt_at
 	ui["noise_pips"].queue_redraw()
@@ -1864,7 +1869,7 @@ func _refresh_encounter(hi: Dictionary) -> void:
 	if not enc:
 		return
 	ui["enc_hero"].texture = Art.tex(P.HERO_ART.get(game.hero, ""))
-	ui["enc_status"].text = "Health %d/%d    Noise %d/%d" % [game.health, Config.MAX_HEALTH, game.noise, Config.MAX_NOISE]
+	ui["enc_status"].text = "Health %d/%d    Noise %d/%d" % [game.health, game.max_health(), game.noise, Config.MAX_NOISE]
 	ui["enc_shield"].text = "Your Old Shield will block the next hit." if "old_shield" in game.treasures else ""
 	ui["enc_shield"].visible = ui["enc_shield"].text != ""
 	for ch in ui["enc_first"].get_children():
